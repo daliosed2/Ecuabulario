@@ -3,37 +3,37 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#ffd166" />
   <title>Ecuabulario – Juego</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="bg-yellow">
   <div class="wrap">
     <header class="topbar">
-      <a class="btn" href="index.html">🏠</a>
-      <div class="status">
+      <a class="btn" href="index.html" aria-label="Volver al inicio">🏠</a>
+      <div class="status" aria-live="polite">
         <span id="level">Nivel 1</span>
         <div class="progress small"><div id="bar" class="bar"></div></div>
       </div>
-      <div class="hud">
+      <div class="hud" aria-label="Monedas">
         <div class="coins">🪙 <span id="coins">0</span></div>
       </div>
     </header>
 
     <main class="card surface gamecard" id="gamecard">
       <h2 id="clue" class="clue">Cargando…</h2>
+      <div id="slots" class="slots" role="group" aria-label="Casillas de la respuesta"></div>
 
-      <div id="slots" class="slots"></div>
-
-      <div class="hints">
-        <button id="hint-letter" class="pill">Revelar letra (🪙15)</button>
-        <button id="hint-first"  class="pill">Primera letra (🪙10)</button>
-        <button id="hint-solve"  class="pill">Resolver (🪙50)</button>
+      <div class="hints" id="hints" role="group" aria-label="Ayudas">
+        <button id="hint-letter" class="pill" aria-label="Revelar una letra">Revelar letra (🪙15)</button>
+        <button id="hint-first"  class="pill" aria-label="Revelar la primera letra">Primera letra (🪙10)</button>
+        <button id="hint-solve"  class="pill" aria-label="Resolver toda la palabra">Resolver (🪙50)</button>
       </div>
 
-      <div id="msg" class="msg"></div>
+      <div id="msg" class="msg" aria-live="polite"></div>
     </main>
 
-    <!-- Input para levantar el teclado nativo (móvil/desktop) -->
+    <!-- Input para levantar el teclado nativo: programático, no intercepta taps -->
     <input
       id="typer"
       type="text"
@@ -44,10 +44,12 @@
       enterkeyhint="go"
       spellcheck="false"
       class="hidden-input"
+      aria-hidden="true"
+      tabindex="-1"
     />
 
-    <!-- Fallback para iOS tercos -->
-    <div id="editableHack" contenteditable="true" class="hidden-input" aria-label="Escribe aquí"></div>
+    <!-- Fallback para iOS muy terco -->
+    <div id="editableHack" contenteditable="true" class="hidden-input" aria-hidden="true"></div>
   </div>
 
   <script type="module" src="game.js"></script>
