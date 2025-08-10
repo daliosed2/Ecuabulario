@@ -1,202 +1,116 @@
-:root {
-  --bg-start: #ffeb8a;        /* Fondo pantalla inicio */
-  --bg-game: #1a1d29;         /* Fondo del juego */
-  --slot-bg: #222533;
-  --slot-line: #374151;
-  --slot-focus: #60a5fa;
-  --ok: #4ade80;
-  --bad: #f87171;
+:root{
+  /* Colores base */
+  --text:#0f172a; --muted:#4b5563;
+  --ok:#16a34a; --bad:#ef4444; --brand:#111827;
+  --yellow1:#fff3b0; --yellow2:#ffe08a; --yellow3:#ffd166;
+
+  /* Superficies y líneas */
+  --card:#ffffffcc;  /* superficie clara translúcida */
+  --line:#e5e7eb;
+
+  /* Slots (controlados por JS para evitar scroll) */
+  --slot-bg:#0b1324; --slot-line:#2f3a55; --slot-focus:#60a5fa;
+  --slot-size: 62px;          /* será recalculado por JS */
+  --gap-letter: 12px;         /* gap entre letras (en una palabra) */
+  --gap-word-row: 14px;       /* gap vertical entre filas de palabras */
+  --gap-word-col: 18px;       /* gap horizontal entre palabras */
 }
 
-html, body {
-  margin:0;
-  padding:0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  height:100%;
-  background: var(--bg-game);
-  color:white;
+/* Fondo amarillo para TODAS las pantallas */
+.bg-yellow{
+  background: radial-gradient(900px 600px at 20% 0%, var(--yellow1) 0%, var(--yellow2) 50%, var(--yellow3) 100%);
+  min-height: 100vh;
+  color: var(--text);
 }
 
-#start-screen {
-  background: var(--bg-start);
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
+*{box-sizing:border-box}
+html,body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:22px}
 
-#start-screen h1 {
-  font-size: 2.5rem;
-  color: #222;
-  margin-bottom: 1rem;
-}
+/* Header */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.brand{display:flex;gap:8px;align-items:center}
+.logo{width:36px;height:36px;border-radius:8px;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:900}
 
-#start-screen button {
-  background: #222;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  font-size: 1.2rem;
-  border-radius: 8px;
-  cursor: pointer;
-}
-#start-screen button:hover {
-  background: #444;
-}
+.hud,.status{display:flex;align-items:center;gap:10px}
+.coins{background:#0d111b;border:1px solid #232a3d;padding:9px 14px;border-radius:999px;font-weight:700;color:#e7e9ee}
 
-#game-screen {
-  display:none;
-  flex-direction:column;
-  align-items:center;
-  padding:20px;
+/* Superficie común (index y game) */
+.card.surface{
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 18px;
+  backdrop-filter: blur(2px);
 }
+.title{margin:6px 0 8px}
+.muted{color:var(--muted)}
+.actions{margin-top:12px}
+.foot{margin-top:16px;color:#374151}
 
-header {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  width:100%;
-  max-width:800px;
-  margin-bottom:20px;
-}
+.progress{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+.progress.small{height:8px}
+.bar{height:100%;background:linear-gradient(90deg,#22c55e,#84cc16);width:0%}
 
-#coins {
-  font-weight:bold;
-}
+.btn{border:1px solid var(--brand);background:var(--brand);color:#fff;padding:12px 16px;border-radius:12px;cursor:pointer;text-decoration:none;min-height:44px}
+.btn.primary{background:var(--brand)}
+.pill{padding:12px 14px;border-radius:999px;border:1px solid #293042;background:#121826;color:#cbd5e1;cursor:pointer;min-height:44px}
 
-#bar-container {
-  background:#333;
-  border-radius:10px;
-  overflow:hidden;
-  width:50%;
-  height:12px;
-}
-#bar {
-  background:#60a5fa;
-  height:100%;
-  width:0%;
-  transition:width 0.3s ease;
-}
+/* --- Juego: recuadros protagonistas por PALABRA --- */
+.clue{margin:10px 0 14px}
 
-#clue {
-  font-size: clamp(1rem, 3vw, 1.2rem);
-  margin-bottom:20px;
-  text-align:center;
-}
-
-/* Contenedor de todas las palabras */
-#slots {
-  display:flex;
-  flex-wrap:wrap;
-  gap: clamp(10px, 2vw, 14px) clamp(12px, 2vw, 18px);
+#slots{
+  display:flex; flex-wrap:wrap;
+  gap: var(--gap-word-row) var(--gap-word-col);
   justify-content:center;
   margin:16px 0 18px;
 }
+.word{ display:flex; gap: var(--gap-letter); }
 
-/* Cada palabra es un grupo horizontal de slots */
-.word {
-  display:flex;
-  gap: clamp(6px, 2vw, 12px);
-}
-
-/* Slot individual adaptativo */
-.slot {
-  /* Tamaño adaptable: mínimo 40px, ideal 8vw, máximo 70px */
-  width: clamp(40px, 8vw, 70px);
-  height: clamp(50px, 10vw, 85px);
-
+.slot{
+  width: var(--slot-size);
+  height: calc(var(--slot-size) * 1.23); /* ~62x76 proporción */
   border:3px solid var(--slot-line);
   border-radius:16px;
-  display:grid;
-  place-items:center;
+  display:grid; place-items:center;
   font-weight:900;
-  font-size: clamp(1rem, 3.5vw, 1.8rem);
-  background:var(--slot-bg);
-  color:#e8ecf4;
+  font-size: calc(var(--slot-size) * 0.32);
+  background:var(--slot-bg); color:#e8ecf4;
   box-shadow:0 10px 28px rgba(0,0,0,.25);
   transition:transform .08s, border-color .15s, box-shadow .15s;
 }
+.slot.filled{animation:pop .08s ease}
+.slot.focus{border-color:var(--slot-focus); box-shadow:0 0 0 3px rgba(96,165,250,.25)}
+.slot.lock{background:#0f2a18;border-color:#1f4d2c}
 
-.slot.filled {
-  animation:pop .08s ease;
-}
+@keyframes pop{0%{transform:scale(.92)}100%{transform:scale(1)}}
 
-.slot.focus {
-  border-color:var(--slot-focus);
-  box-shadow:0 0 0 3px rgba(96,165,250,.25);
-}
+.msg{min-height:24px;margin-top:10px}
+.ok{color:var(--ok)} .bad{color:var(--bad)}
+.shake{animation:shake .18s linear 0s 2}
+@keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-4px)}50%{transform:translateX(4px)}75%{transform:translateX(-3px)}100%{transform:translateX(0)}}
+.winflash{box-shadow:0 0 0 0 rgba(34,197,94,.0);animation:flash .7s ease}
+@keyframes flash{0%{box-shadow:0 0 0 0 rgba(34,197,94,.0)}45%{box-shadow:0 0 40px 6px rgba(34,197,94,.35)}100%{box-shadow:0 0 0 0 rgba(34,197,94,.0)}}
 
-/* Animación al escribir */
-@keyframes pop {
-  0% { transform:scale(0.95) }
-  100% { transform:scale(1) }
-}
-
-/* Estados de victoria/derrota */
-.winflash {
-  animation:winflash 0.4s ease;
-}
-@keyframes winflash {
-  0% { background:var(--ok); }
-  100% { background:transparent; }
-}
-
-.shake {
-  animation:shake 0.2s ease;
-}
-@keyframes shake {
-  0%, 100% { transform:translateX(0); }
-  25% { transform:translateX(-4px); }
-  75% { transform:translateX(4px); }
+/* Input/fallback dentro del viewport, NO bloquean taps */
+.hidden-input{
+  position: fixed;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px; height: 1px;       /* suficientemente visible para iOS */
+  opacity: 0.01; background: transparent; color: transparent;
+  border: 0; caret-color: transparent;
+  z-index: 0;               /* debajo de todo */
+  pointer-events: none;     /* no intercepta toques */
 }
 
-/* Mensajes */
-#msg {
-  min-height:24px;
-  margin-top:10px;
-}
-#msg .ok {
-  color:var(--ok);
-  font-weight:bold;
-}
-#msg .bad {
-  color:var(--bad);
-  font-weight:bold;
+/* Accesibilidad: respeta preferencia de reducir animaciones */
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important; transition:none !important}
 }
 
-/* Input invisible */
-#typer, .hidden-input {
-  position:absolute;
-  left:-9999px;
-  pointer-events: none;
-}
-
-/* Botones de pistas */
-#hints {
-  display:flex;
-  gap:10px;
-  margin-top:20px;
-}
-
-#hints button {
-  background:#374151;
-  color:white;
-  border:none;
-  padding:12px 14px;
-  border-radius:6px;
-  cursor:pointer;
-  font-size:0.95rem;
-  min-height:44px; /* recomendado para móvil */
-}
-
-#hints button:hover {
-  background:#4b5563;
-}
-
-/* Adaptación móvil */
-@media (max-width:600px) {
-  #start-screen h1 {
-    font-size: 2rem;
-  }
+/* Responsive fino */
+@media(max-width:520px){
+  .word{ gap: max(8px, var(--gap-letter)) }
 }
