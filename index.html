@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#ffd166" />
   <title>Ecuabulario</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -10,7 +11,7 @@
   <div class="wrap">
     <header class="topbar">
       <div class="brand"><span class="logo">EC</span><b>Ecuabulario</b></div>
-      <div class="hud">
+      <div class="hud" aria-label="Monedas">
         <div class="coins">🪙 <span id="coins">0</span></div>
       </div>
     </header>
@@ -23,7 +24,7 @@
       <small class="muted"><span id="done">0</span>/<span id="total">0</span> resueltas</small>
 
       <div class="actions">
-        <a class="btn primary" href="game.html">Jugar</a>
+        <a class="btn primary" href="game.html" aria-label="Empezar a jugar">Jugar</a>
       </div>
     </main>
 
@@ -32,7 +33,7 @@
 
   <script type="module">
     import { ensureInit, loadCoins, getProgressAll, ALL_WORDS } from './data.js';
-    ensureInit();
+    try { ensureInit(); } catch {}
     document.getElementById('coins').textContent = loadCoins();
     const p = getProgressAll();
     document.getElementById('done').textContent = p.done;
