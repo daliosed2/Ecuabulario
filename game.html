@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Ecuabulario – Juego</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
+<body class="bg-yellow">
   <div class="wrap">
     <header class="topbar">
       <a class="btn" href="index.html">🏠</a>
@@ -19,7 +19,7 @@
       </div>
     </header>
 
-    <main class="card gamecard" id="gamecard">
+    <main class="card surface gamecard" id="gamecard">
       <h2 id="clue" class="clue">Cargando…</h2>
 
       <div id="slots" class="slots"></div>
@@ -33,7 +33,7 @@
       <div id="msg" class="msg"></div>
     </main>
 
-    <!-- Input para levantar el teclado nativo -->
+    <!-- Input para levantar el teclado nativo (móvil/desktop) -->
     <input
       id="typer"
       type="text"
