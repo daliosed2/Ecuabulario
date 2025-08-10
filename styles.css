@@ -37,47 +37,4 @@ body,html{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sa
 
 .foot{margin-top:16px;color:#374151}
 
-/* --- Pantalla de juego (oscuro) --- */
-.card.gamecard{background:linear-gradient(180deg,#141826,#111726);border:1px solid var(--line);color:var(--text-inv)}
-.status{gap:12px}
-.clue{margin:10px 0 14px}
-
-/* Recuadros protagonistas */
-.slots{
-  display:flex;flex-wrap:wrap;gap:12px;margin:16px 0 18px;justify-content:center;
-}
-.slot{
-  width:62px;height:76px;border:3px solid #2f3a55;border-radius:16px;
-  display:grid;place-items:center;font-weight:900;font-size:1.7rem;
-  background:#0b1324;color:#e8ecf4; box-shadow:0 10px 28px rgba(0,0,0,.35);
-  transition:transform .08s, border-color .15s, box-shadow .15s;
-}
-.slot.space{border-color:transparent;background:transparent;width:22px;box-shadow:none}
-.slot.filled{animation:pop .08s ease}
-.slot.focus{border-color:#60a5fa; box-shadow:0 0 0 3px rgba(96,165,250,.25)}
-.slot.lock{background:#0f2a18;border-color:#1f4d2c}
-@keyframes pop{0%{transform:scale(.92)}100%{transform:scale(1)}}
-
-.hints{display:flex;gap:8px;flex-wrap:wrap}
-.pill{padding:8px 12px;border-radius:999px;border:1px solid #293042;background:#121826;color:#cbd5e1;cursor:pointer}
-
-.msg{min-height:24px;margin-top:10px}
-.ok{color:var(--ok)} .bad{color:var(--bad)}
-.shake{animation:shake .18s linear 0s 2}
-@keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-4px)}50%{transform:translateX(4px)}75%{transform:translateX(-3px)}100%{transform:translateX(0)}}
-.winflash{box-shadow:0 0 0 0 rgba(34,197,94,.0);animation:flash .7s ease}
-@keyframes flash{0%{box-shadow:0 0 0 0 rgba(34,197,94,.0)}45%{box-shadow:0 0 40px 6px rgba(34,197,94,.35)}100%{box-shadow:0 0 0 0 rgba(34,197,94,.0)}}
-
-/* Input invisible pero dentro del viewport para abrir teclado nativo */
-.hidden-input{
-  position:absolute;
-  left:50%;
-  bottom:12px;
-  transform:translateX(-50%);
-  width:1px;height:1px;
-  opacity:0;border:0;background:transparent;
-}
-
-@media(max-width:520px){
-  .slot{width:56px;height:68px;font-size:1.5rem}
-}
+/* --- Pantalla de
