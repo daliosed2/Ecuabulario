@@ -1,40 +1,93 @@
 :root{
-  --bg:#0f1014; --card:#151821; --line:#222739;
-  --text:#0f172a; --text-inv:#e7e9ee; --muted:#4b5563;
-  --ok:#16a34a; --bad:#ef4444; --brand:#0ea5e9;
+  /* Base */
+  --text:#0f172a; --text-inv:#0f172a; --muted:#4b5563;
+  --ok:#16a34a; --bad:#ef4444; --brand:#111827;
   --yellow1:#fff3b0; --yellow2:#ffe08a; --yellow3:#ffd166;
+
+  /* Cards y líneas */
+  --card:#ffffffcc;  /* superficie clara translúcida */
+  --line:#e5e7eb;
+
+  /* Slots (contrastan fuerte) */
+  --slot-bg:#0b1324; --slot-line:#2f3a55; --slot-focus:#60a5fa;
 }
 
-/* Home con fondo amarillo */
+/* Fondo amarillo para TODAS las pantallas */
 .bg-yellow{
   background: radial-gradient(900px 600px at 20% 0%, var(--yellow1) 0%, var(--yellow2) 50%, var(--yellow3) 100%);
   min-height: 100vh;
+  color: var(--text);
 }
 
 *{box-sizing:border-box}
-body:not(.bg-yellow){background:var(--bg);color:var(--text-inv)}
 body,html{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif}
 .wrap{max-width:900px;margin:0 auto;padding:22px}
+
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .brand{display:flex;gap:8px;align-items:center}
-.logo{width:36px;height:36px;border-radius:8px;background:#111827;color:#fff;display:grid;place-items:center;font-weight:900}
-.title{color:#111827}
+.logo{width:36px;height:36px;border-radius:8px;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:900}
+.title{margin:6px 0 8px}
 
 .hud,.status{display:flex;align-items:center;gap:10px}
 .coins{background:#0d111b;border:1px solid #232a3d;padding:7px 10px;border-radius:999px;font-weight:700;color:#e7e9ee}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
-.card{background:#ffffffcc;border:1px solid #e5e7eb;border-radius:18px;padding:18px;backdrop-filter: blur(2px)}
-.cat-emoji{font-size:32px}
-.cat{display:flex;align-items:center;justify-content:space-between;gap:14px}
-.cat-left{display:flex;gap:14px;align-items:center}
-.muted{color:#4b5563}
+.card.surface{
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 18px;
+  backdrop-filter: blur(2px);
+}
+.actions{margin-top:12px}
+
 .progress{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
 .progress.small{height:8px}
 .bar{height:100%;background:linear-gradient(90deg,#22c55e,#84cc16);width:0%}
-.btn{border:1px solid #111827;background:#111827;color:#fff;padding:9px 14px;border-radius:12px;cursor:pointer;text-decoration:none}
-.btn.primary{background:#111827}
 
+.btn{border:1px solid var(--brand);background:var(--brand);color:#fff;padding:9px 14px;border-radius:12px;cursor:pointer;text-decoration:none}
+.btn.primary{background:var(--brand)}
+.pill{padding:8px 12px;border-radius:999px;border:1px solid #293042;background:#121826;color:#cbd5e1;cursor:pointer}
+
+.muted{color:var(--muted)}
 .foot{margin-top:16px;color:#374151}
 
-/* --- Pantalla de
+/* --- Juego: recuadros protagonistas --- */
+.clue{margin:10px 0 14px}
+.slots{
+  display:flex;flex-wrap:wrap;gap:12px;margin:16px 0 18px;justify-content:center;
+}
+.slot{
+  width:62px;height:76px;border:3px solid var(--slot-line);border-radius:16px;
+  display:grid;place-items:center;font-weight:900;font-size:1.7rem;
+  background:var(--slot-bg);color:#e8ecf4; box-shadow:0 10px 28px rgba(0,0,0,.25);
+  transition:transform .08s, border-color .15s, box-shadow .15s;
+}
+.slot.space{border-color:transparent;background:transparent;width:22px;box-shadow:none}
+.slot.filled{animation:pop .08s ease}
+.slot.focus{border-color:var(--slot-focus); box-shadow:0 0 0 3px rgba(96,165,250,.25)}
+.slot.lock{background:#0f2a18;border-color:#1f4d2c}
+@keyframes pop{0%{transform:scale(.92)}100%{transform:scale(1)}}
+
+.msg{min-height:24px;margin-top:10px}
+.ok{color:var(--ok)} .bad{color:var(--bad)}
+.shake{animation:shake .18s linear 0s 2}
+@keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-4px)}50%{transform:translateX(4px)}75%{transform:translateX(-3px)}100%{transform:translateX(0)}}
+.winflash{box-shadow:0 0 0 0 rgba(34,197,94,.0);animation:flash .7s ease}
+@keyframes flash{0%{box-shadow:0 0 0 0 rgba(34,197,94,.0)}45%{box-shadow:0 0 40px 6px rgba(34,197,94,.35)}100%{box-shadow:0 0 0 0 rgba(34,197,94,.0)}}
+
+/* Input casi invisible pero dentro del viewport (iOS abre teclado) */
+.hidden-input{
+  position: fixed;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 160px; height: 40px;
+  opacity: 0.01;
+  background: transparent; color: transparent;
+  border: 0; caret-color: transparent;
+  z-index: 9999;
+}
+
+@media(max-width:520px){
+  .slot{width:56px;height:68px;font-size:1.5rem}
+}
