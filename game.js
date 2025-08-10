@@ -14,8 +14,6 @@ const EL = {
   slots: document.getElementById('slots'),
   msg:   document.getElementById('msg'),
   kb:    document.getElementById('kb'),
-  check: document.getElementById('check'),
-  skip:  document.getElementById('skip'),
   hintLetter: document.getElementById('hint-letter'),
   hintFirst:  document.getElementById('hint-first'),
   hintSolve:  document.getElementById('hint-solve'),
@@ -25,13 +23,13 @@ let coins = loadCoins();
 EL.coins.textContent = coins;
 
 const solved = getSolved(CAT);
-let queue = BANK.filter(x=>!solved.has(x.id));             // pendientes
-if(queue.length===0) queue = [...BANK];                     // resetea si todo resuelto
+let queue = BANK.filter(x=>!solved.has(x.id));
+if(queue.length===0) queue = [...BANK];
 shuffle(queue);
 
 let current = null;
 let answerClean = '';
-let boxes = [];   // {el, char, locked}
+let boxes = [];   // {el, char, locked, val}
 
 function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a; }
 
@@ -51,7 +49,6 @@ function newWord(){
   EL.slots.innerHTML = '';
   boxes = [];
 
-  // construir casillas
   for(const ch of text){
     if(ch===' ' || ch==='-'){
       const s = document.createElement('div');
@@ -66,7 +63,6 @@ function newWord(){
     boxes.push({el:s, char: ch, locked:false, val:''});
   }
 
-  // teclado
   buildKeyboard();
 }
 
@@ -85,12 +81,14 @@ function buildKeyboard(){
   EL.kb.appendChild(back);
 }
 
-function firstEmpty(){
-  return boxes.find(b=>!b.locked && !b.val);
-}
+function firstEmpty(){ return boxes.find(b=>!b.locked && !b.val); }
 function lastFilled(){
   for(let i=boxes.length-1;i>=0;i--) if(boxes[i].val && !boxes[i].locked) return i;
   return -1;
+}
+
+function maybeAutoCheck(){
+  if (boxes.every(b => b.val || b.locked)) check();
 }
 
 function typeLetter(L){
@@ -98,6 +96,7 @@ function typeLetter(L){
   if(!b) return;
   b.val = L;
   b.el.textContent = L;
+  maybeAutoCheck();
 }
 
 function backspace(){
@@ -105,6 +104,7 @@ function backspace(){
   if(i<0) return;
   boxes[i].val = '';
   boxes[i].el.textContent = '';
+  EL.msg.textContent = ''; // limpiar mensaje si corrige
 }
 
 function userGuessClean(){
@@ -115,7 +115,7 @@ function userGuessClean(){
 function win(){
   EL.msg.innerHTML = '<span class="ok">¡Correcto! +20 🪙</span>';
   coins += 20; saveCoins(coins); EL.coins.textContent = coins;
-  addSolved(current.id);
+  addSolved(CAT, current.id);
   setTimeout(()=>{ nextItem(); }, 700);
 }
 
@@ -130,36 +130,42 @@ function check(){
 
 function nextItem(){
   updateHud();
-  if(queue.length===0){ queue = BANK.filter(x=>!getSolved().has(x.id)); shuffle(queue); }
+  if(queue.length===0){
+    queue = BANK.filter(x=>!getSolved(CAT).has(x.id));
+    if(queue.length===0) queue = [...BANK];
+    shuffle(queue);
+  }
   newWord();
-  // limpiar teclado usado
   [...EL.kb.children].forEach(k=>k.classList.remove('used'));
 }
 
-// Hints
+// --- Pistas ---
 function pay(cost){
   if(coins<cost){ EL.msg.innerHTML = '<span class="bad">No te alcanzan las monedas.</span>'; return false; }
   coins -= cost; saveCoins(coins); EL.coins.textContent = coins; return true;
 }
+
 function hintLetter(){
   if(!pay(15)) return;
-  const candidates = boxes
-    .map((b,i)=>({b,i}))
-    .filter(x=>!x.b.locked && !x.b.val);            // vacías
-  if(!candidates.length) return;
+  const candidates = boxes.filter(b=>!b.locked && !b.val);
+  if(!candidates.length) { maybeAutoCheck(); return; }
   const pick = candidates[Math.floor(Math.random()*candidates.length)];
-  pick.b.val = pick.b.char.toUpperCase();
-  pick.b.el.textContent = pick.b.val;
-  pick.b.locked = true; pick.b.el.classList.add('lock');
+  pick.val = pick.char.toUpperCase();
+  pick.el.textContent = pick.val;
+  pick.locked = true; pick.el.classList.add('lock');
+  maybeAutoCheck();
 }
+
 function hintFirst(){
   if(!pay(10)) return;
   const first = boxes.find(b=>!b.locked);
-  if(!first) return;
+  if(!first) { maybeAutoCheck(); return; }
   first.val = first.char.toUpperCase();
   first.el.textContent = first.val;
   first.locked = true; first.el.classList.add('lock');
+  maybeAutoCheck();
 }
+
 function hintSolve(){
   if(!pay(50)) return;
   boxes.forEach(b=>{
@@ -169,22 +175,15 @@ function hintSolve(){
       b.locked = true; b.el.classList.add('lock');
     }
   });
-  check();
+  maybeAutoCheck();
 }
-
-// Eventos
-EL.check.onclick = check;
-EL.skip.onclick  = nextItem;
-EL.hintLetter.onclick = hintLetter;
-EL.hintFirst.onclick  = hintFirst;
-EL.hintSolve.onclick  = hintSolve;
 
 // Teclado físico
 window.addEventListener('keydown', (e)=>{
   const k = e.key.toUpperCase();
   if(/^[A-ZÑ]$/.test(k)) typeLetter(k);
   else if(e.key==='Backspace') backspace();
-  else if(e.key==='Enter') check();
+  else if(e.key==='Enter') maybeAutoCheck(); // opcional
 });
 
 updateHud();
