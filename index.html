@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ecuapalas</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <div class="brand"><span class="logo">EC</span><b>Ecuapalas</b></div>
+      <div class="coins">🪙 <span id="coins">0</span></div>
+    </header>
+
+    <h1 class="title">Colecciones</h1>
+
+    <section class="card cat">
+      <div class="cat-left">
+        <div class="cat-emoji">🍽️</div>
+        <div>
+          <h2>Comida & bebida</h2>
+          <p class="muted">Sabores que nos identifican en Ecuador.</p>
+          <div class="progress"><div id="bar" class="bar"></div></div>
+          <small class="muted"><span id="done">0</span>/<span id="total">0</span> resueltas</small>
+        </div>
+      </div>
+      <a class="btn primary" href="game.html?cat=food">Nivel <span id="level">1</span></a>
+    </section>
+
+    <footer class="muted">Tu avance y monedas se guardan en este dispositivo.</footer>
+  </div>
+
+  <script type="module">
+    import {loadCoins, ensureInit, getProgress, BANKS} from './data.js';
+    ensureInit();
+    document.getElementById('coins').textContent = loadCoins();
+
+    const prog = getProgress('food'); // {done,total,level,ratio}
+    document.getElementById('done').textContent = prog.done;
+    document.getElementById('total').textContent = prog.total;
+    document.getElementById('level').textContent = prog.level;
+    document.getElementById('bar').style.width = (prog.ratio*100)+'%';
+    document.getElementById('total').textContent = BANKS.food.length;
+  </script>
+</body>
+</html>
