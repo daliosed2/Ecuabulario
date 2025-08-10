@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ecuapalas – Juego</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="btn" href="index.html">🏠</a>
+      <div class="status">
+        <span id="level">Nivel 1</span>
+        <div class="progress small"><div id="bar" class="bar"></div></div>
+      </div>
+      <div class="coins">🪙 <span id="coins">0</span></div>
+    </header>
+
+    <main class="card">
+      <h2 id="clue" class="clue">Cargando…</h2>
+
+      <div id="slots" class="slots"></div>
+
+      <div class="actions">
+        <button id="check" class="btn primary">Comprobar</button>
+        <button id="skip"  class="btn">Saltar</button>
+      </div>
+
+      <div class="hints">
+        <button id="hint-letter" class="pill">Revelar letra (🪙15)</button>
+        <button id="hint-first"  class="pill">Primera letra (🪙10)</button>
+        <button id="hint-solve"  class="pill">Resolver (🪙50)</button>
+      </div>
+
+      <div id="msg" class="msg"></div>
+    </main>
+
+    <section class="kb" id="kb"></section>
+  </div>
+
+  <script type="module" src="game.js"></script>
+</body>
+</html>
