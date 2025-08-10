@@ -50,6 +50,76 @@ function highlightNext(){
   if (b) b.el.classList.add('focus');
 }
 
+/* =======================
+   Auto-ajuste sin scroll
+   ======================= */
+const root = document.documentElement;
+const cssNum = (name, fallback)=> {
+  const v = getComputedStyle(root).getPropertyValue(name).trim();
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+const BASE = {
+  size: cssNum('--slot-size', 62),
+  gapL: cssNum('--gap-letter', 12),
+  gapRow: cssNum('--gap-word-row', 14),
+  gapCol: cssNum('--gap-word-col', 18),
+};
+const setSize = (px)=> root.style.setProperty('--slot-size', px+'px');
+const setGaps = (l,r,c)=>{
+  root.style.setProperty('--gap-letter', l+'px');
+  root.style.setProperty('--gap-word-row', r+'px');
+  root.style.setProperty('--gap-word-col', c+'px');
+};
+const debounce = (fn, wait=120)=>{
+  let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); };
+};
+
+function fitSlots(){
+  if(!current) return;
+
+  // 1) Reset a base para medir
+  setSize(BASE.size);
+  setGaps(BASE.gapL, BASE.gapRow, BASE.gapCol);
+
+  // 2) Calcular tamaño por palabra más larga para entrar en ancho
+  const containerW = EL.slots.clientWidth || EL.slots.getBoundingClientRect().width || (window.innerWidth - 40);
+  const words = current.a.split(/[\s-]+/).filter(Boolean);
+  const longest = words.reduce((m,w)=>Math.max(m,w.length), 1);
+  const gapL = cssNum('--gap-letter', BASE.gapL);
+
+  let size = Math.floor( (containerW - gapL*(longest-1)) / longest );
+  size = Math.min(size, 80);   // techo
+  size = Math.max(size, 26);   // piso
+  setSize(size);
+
+  // 3) Verificar alto disponible y reescalar si hiciera falta
+  // Reservamos espacio para pistas y mensaje (~160px)
+  let tries = 0;
+  while (tries < 4){
+    const rect = EL.slots.getBoundingClientRect();
+    const reserve = 160;
+    const availH = Math.max(120, window.innerHeight - rect.top - reserve);
+    const needH  = EL.slots.scrollHeight;
+
+    if (needH <= availH) break;
+
+    const ratio = Math.max(0.6, Math.min(0.98, availH / needH));
+    size = Math.max(22, Math.floor(size * ratio));
+    setSize(size);
+
+    const gL2  = Math.max(6,  Math.floor(BASE.gapL   * ratio));
+    const gR2  = Math.max(6,  Math.floor(BASE.gapRow * ratio));
+    const gC2  = Math.max(8,  Math.floor(BASE.gapCol * ratio));
+    setGaps(gL2, gR2, gC2);
+
+    tries++;
+  }
+}
+
+/* =======================
+        Render palabra
+   ======================= */
 function newWord(){
   current = queue.shift();
   if (!current) {
@@ -80,21 +150,36 @@ function newWord(){
     EL.slots.appendChild(w);
   });
 
-  // Delegación: tocar cualquier slot/word enfoca el input
-  const focusTyperSync = ()=>{
-    try {
-      EL.typer.focus({ preventScroll:true });
-      const len = EL.typer.value.length;
-      EL.typer.setSelectionRange(len, len);
-    } catch {}
-  };
-  EL.slots.addEventListener('click', focusTyperSync, { passive:true });
-  EL.slots.addEventListener('touchstart', focusTyperSync, { passive:true });
-
   highlightNext();
+  // Ajustar tamaño sin scroll en el siguiente frame
+  requestAnimationFrame(fitSlots);
 }
 
-// Validación
+/* =======================
+     Teclado / enfoque
+   ======================= */
+// Abrir teclado SOLO al tocar un recuadro (o palabra)
+function focusTyperSync(){
+  try {
+    EL.typer.focus({ preventScroll:true });
+    const len = EL.typer.value.length;
+    EL.typer.setSelectionRange(len, len);
+  } catch {}
+}
+const focusHack = ()=>{ try{ EL.editableHack?.focus({preventScroll:true}); }catch{} };
+
+// Delegación: tocar el contenedor de slots
+['click','touchstart'].forEach(evt=>{
+  EL.slots.addEventListener(evt, ()=>{ focusTyperSync(); focusHack(); }, { passive:true });
+});
+
+// Recalcular al rotar o redimensionar (con debounce)
+window.addEventListener('resize', debounce(fitSlots, 120));
+window.addEventListener('orientationchange', debounce(fitSlots, 120));
+
+/* =======================
+        Validación
+   ======================= */
 function maybeAutoCheck(){
   if (boxes.every(b => b.val || b.locked)) check();
   else highlightNext();
@@ -150,7 +235,9 @@ function check(){
   else fail();
 }
 
-// Pistas
+/* =======================
+           Pistas
+   ======================= */
 function pay(cost){
   if (coins < cost){
     EL.msg.innerHTML = '<span class="bad">No te alcanzan las monedas.</span>';
@@ -192,29 +279,36 @@ function hintSolve(){
   maybeAutoCheck();
 }
 
-// Helpers de eventos múltiples
+// Helpers de eventos múltiples (para móvil y desktop)
 function onMany(el, evts, fn, opts={passive:true}){ evts.forEach(e=>el?.addEventListener(e, fn, opts)); }
 onMany(EL.hintLetter, ['pointerup','touchend','click'], hintLetter);
 onMany(EL.hintFirst,  ['pointerup','touchend','click'], hintFirst);
 onMany(EL.hintSolve,  ['pointerup','touchend','click'], hintSolve);
 
-// Entrada SOLO desde el input (PC y móvil) — Anti-doble
+/* =======================
+  Entrada SOLO desde input
+   ======================= */
+// Anti-doble de algunos teclados
 let lastStamp = 0;
+
 // Letras
 EL.typer.addEventListener('input', (e)=>{
   const now = performance.now();
   if (now - lastStamp < 15) return;
   lastStamp = now;
+
   const v = e.target.value.toUpperCase();
   const ch = v.slice(-1);
   if(/^[A-ZÑ]$/.test(ch)) typeLetter(ch);
   e.target.value = '';
 });
+
 // Borrar / Enter (algunos teclados)
 EL.typer.addEventListener('keydown', (e)=>{
   if(e.key === 'Backspace'){ e.preventDefault(); backspace(); }
   else if(e.key === 'Enter'){ e.preventDefault(); maybeAutoCheck(); }
 });
+
 // Backspace confiable en iOS/Android
 EL.typer.addEventListener('beforeinput', (e)=>{
   if (e.inputType === 'deleteContentBackward'){
@@ -223,7 +317,7 @@ EL.typer.addEventListener('beforeinput', (e)=>{
   }
 });
 
-// Fallback contenteditable (iOS MUY terco). No bloquea taps (pointer-events:none en CSS).
+// Fallback contenteditable (iOS MUY terco) — no intercepta taps (pointer-events:none en CSS)
 if (EL.editableHack) {
   EL.editableHack.addEventListener('input', ()=>{
     const ch = EL.editableHack.textContent.slice(-1).toUpperCase();
@@ -232,6 +326,8 @@ if (EL.editableHack) {
   });
 }
 
-// Init
+/* =======================
+           Init
+   ======================= */
 updateHud();
 newWord();
