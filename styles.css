@@ -1,0 +1,28 @@
+:root{--bg:#0f172a;--card:#111827;--line:#1f2937;--text:#e5e7eb;--muted:#94a3b8;--ok:#22c55e;--bad:#ef4444}
+*{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#0b1220,#0f172a 40%);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:20px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.brand{display:flex;gap:8px;align-items:center}.logo{width:34px;height:34px;border-radius:8px;background:#10b981;display:grid;place-items:center;color:#052012;font-weight:900}
+.title{margin:6px 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 40px rgba(0,0,0,.4)}
+.cat{display:flex;align-items:center;justify-content:space-between;gap:14px}.cat-left{display:flex;gap:14px;align-items:center}
+.cat-emoji{font-size:32px}
+.muted{color:var(--muted)} .coins{font-weight:700}
+.btn{border:1px solid var(--line);background:#0b1220;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;text-decoration:none}
+.btn.primary{background:#16a34a;border-color:#16a34a;color:#05280e;font-weight:700}
+.pill{padding:8px 12px;border-radius:999px;border:1px solid #293042;background:#121826;color:#cbd5e1;cursor:pointer}
+.progress{height:10px;background:#1f2937;border-radius:999px;overflow:hidden;margin-top:8px}.progress.small{height:8px}
+.bar{height:100%;background:linear-gradient(90deg,#22c55e,#84cc16);width:0%}
+.clue{margin:6px 0 10px;font-weight:600}
+.slots{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px}
+.slot{width:42px;height:50px;border:2px solid var(--line);border-radius:10px;display:grid;place-items:center;font-size:1.25rem;background:#0b1220}
+.slot.lock{background:#0f2a18;border-color:#1f4d2c}
+.slot.space{border-color:transparent;background:transparent;width:16px}
+.actions{display:flex;gap:10px;margin:6px 0 12px}
+.hints{display:flex;gap:8px;flex-wrap:wrap}
+.msg{margin-top:10px;height:24px}
+.ok{color:var(--ok)} .bad{color:var(--bad)}
+.kb{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin-top:12px}
+.key{padding:12px 0;border-radius:8px;border:1px solid #2a3446;background:#0e1624;text-align:center;cursor:pointer;user-select:none}
+.key.used{opacity:.45}
+@media(max-width:480px){.slot{width:36px;height:46px}.kb{grid-template-columns:repeat(9,1fr)}}
