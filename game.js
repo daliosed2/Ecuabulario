@@ -19,7 +19,7 @@ const EL = {
   hintLetter: $('hint-letter'),
   hintFirst: $('hint-first'),
   hintSolve: $('hint-solve'),
-  editableHack: $('editableHack'), // fallback iOS terco (contenteditable)
+  editableHack: $('editableHack'),
 };
 
 let coins = loadCoins();
@@ -66,18 +66,20 @@ function newWord(){
   EL.slots.innerHTML = '';
   boxes = [];
 
-  for (const ch of text){
-    if (ch === ' ' || ch === '-'){
+  // === NUEVO: agrupar por palabras ===
+  // Separamos por espacios y guiones; cada token es una "palabra" visual.
+  const tokens = text.split(/[\s-]+/).filter(t => t.length);
+  tokens.forEach(token => {
+    const w = document.createElement('div');
+    w.className = 'word';
+    for (const ch of token){
       const s = document.createElement('div');
-      s.className = 'slot space';
-      EL.slots.appendChild(s);
-      continue;
+      s.className = 'slot';
+      w.appendChild(s);
+      boxes.push({ el:s, char: ch, locked:false, val:'' });
     }
-    const s = document.createElement('div');
-    s.className = 'slot';
-    EL.slots.appendChild(s);
-    boxes.push({ el:s, char: ch, locked:false, val:'' });
-  }
+    EL.slots.appendChild(w);
+  });
 
   highlightNext();
 }
@@ -90,13 +92,8 @@ function focusTyperSync(){
     EL.typer.setSelectionRange(len, len);
   } catch {}
 }
-// Si tocan cualquier recuadro, intentamos abrir teclado
 EL.slots.addEventListener('click', focusTyperSync, { passive:true });
 EL.slots.addEventListener('touchstart', focusTyperSync, { passive:true });
-
-// (Opcional) también al tocar la tarjeta del juego, pero lo dejamos en slots:
-// EL.gamecard.addEventListener('click', focusTyperSync, { passive:true });
-// EL.gamecard.addEventListener('touchstart', focusTyperSync, { passive:true });
 
 // ------- Validación -------
 function maybeAutoCheck(){
@@ -197,29 +194,37 @@ function hintSolve(){
   maybeAutoCheck();
 }
 
-// ------- Entrada SOLO desde el input (evita duplicados en PC) -------
+// ------- Entrada SOLO desde el input (PC y móvil) -------
+// Anti-doble de algunos teclados
 let lastStamp = 0;
 
-// Letras
+// 1) Letras: llegan por 'input'
 EL.typer.addEventListener('input', (e)=>{
   const now = performance.now();
-  if (now - lastStamp < 15) return; // anti-doble de algunos teclados
+  if (now - lastStamp < 15) return;
   lastStamp = now;
 
   const v = e.target.value.toUpperCase();
   const ch = v.slice(-1);
   if(/^[A-ZÑ]$/.test(ch)) typeLetter(ch);
-  e.target.value = ''; // siempre vacío
+  e.target.value = '';
 });
 
-// Especiales
+// 2) Borrar / Enter (en algunos teclados sí dispara keydown)
 EL.typer.addEventListener('keydown', (e)=>{
   if(e.key === 'Backspace'){ e.preventDefault(); backspace(); }
   else if(e.key === 'Enter'){ e.preventDefault(); maybeAutoCheck(); }
 });
 
+// 3) iOS/Android: backspace confiable con 'beforeinput'
+EL.typer.addEventListener('beforeinput', (e)=>{
+  if (e.inputType === 'deleteContentBackward'){
+    e.preventDefault();
+    backspace();
+  }
+});
+
 // ------- Fallback contenteditable (iOS muy terco) -------
-// Solo enfocamos cuando pulsan un recuadro (igual que el input)
 if (EL.editableHack) {
   EL.editableHack.addEventListener('input', ()=>{
     const ch = EL.editableHack.textContent.slice(-1).toUpperCase();
@@ -229,6 +234,7 @@ if (EL.editableHack) {
   const focusHack = ()=> {
     try { EL.editableHack.focus({ preventScroll:true }); } catch {}
   };
+  // Solo cuando tocan los recuadros (mismo comportamiento que el input)
   EL.slots.addEventListener('click', focusHack, { passive:true });
   EL.slots.addEventListener('touchstart', focusHack, { passive:true });
 }
