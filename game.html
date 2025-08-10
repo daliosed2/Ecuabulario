@@ -6,7 +6,7 @@
   <title>Ecuabulario – Juego</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="bg-anim">
   <div class="wrap">
     <header class="topbar">
       <a class="btn" href="index.html">🏠</a>
@@ -14,15 +14,20 @@
         <span id="level">Nivel 1</span>
         <div class="progress small"><div id="bar" class="bar"></div></div>
       </div>
-      <div class="coins">🪙 <span id="coins">0</span></div>
+      <div class="hud">
+        <button id="sound" class="btn" title="Sonidos on/off">🔊</button>
+        <div class="coins">🪙 <span id="coins">0</span></div>
+      </div>
     </header>
 
-    <main class="card">
-      <h2 id="clue" class="clue">Cargando…</h2>
+    <main class="card gamecard" id="gamecard">
+      <div class="clue-row">
+        <div id="badge" class="badge">🔒</div>
+        <h2 id="clue" class="clue">Cargando…</h2>
+      </div>
 
       <div id="slots" class="slots"></div>
 
-      <!-- Sin botón de comprobar ni de saltar -->
       <div class="hints">
         <button id="hint-letter" class="pill">Revelar letra (🪙15)</button>
         <button id="hint-first"  class="pill">Primera letra (🪙10)</button>
@@ -34,6 +39,8 @@
 
     <section class="kb" id="kb"></section>
   </div>
+
+  <div id="coin-fx"></div> <!-- destino para animaciones de moneda -->
 
   <script type="module" src="game.js"></script>
 </body>
