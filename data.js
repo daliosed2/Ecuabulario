@@ -45,7 +45,7 @@ export const ALL_WORDS = [
   { id:'hacervaca', a:'Hacer vaca', clue:'Reunir dinero entre varios' },
   { id:'yapa', a:'Yapa', clue:'Añadidito extra al comprar' },
   { id:'pilas', a:'Pilas', clue:'Estate atento / ponte listo' },
-  { id:'qbestia', a:'¡Qué bestia!', clue:'¡Qué increíble! (énfasis)' },
+  { id:'qbestia', a:'Qué bestia', clue:'¡Qué increíble! (énfasis)' },
   { id:'canguil', a:'Canguil', clue:'Palomitas de maíz' },
   { id:'visaje', a:'Visaje', clue:'Problema o inconveniente' },
   { id:'fresco', a:'Fresco', clue:'Tranquilo / no hay problema' },
