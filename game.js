@@ -10,6 +10,7 @@ const EL = {
   hintLetter:$('hint-letter'), hintFirst:$('hint-first'), hintSolve:$('hint-solve')
 };
 
+// Única categoría: food
 const CAT = 'food';
 const BANK = BANKS[CAT];
 
@@ -66,8 +67,11 @@ function newWord(){
   highlightNext();
 }
 
-function focusTyper(){ setTimeout(()=>EL.typer.focus(), 60); }
+function focusTyper(){ setTimeout(()=>EL.typer.focus(), 50); }
+document.body.addEventListener('pointerdown', focusTyper);
+document.body.addEventListener('pointerup',   focusTyper);
 
+// Validación auto al completar
 function maybeAutoCheck(){
   if (boxes.every(b => b.val || b.locked)) check();
   else highlightNext();
@@ -88,8 +92,8 @@ function backspace(){
 
 function userGuessClean(){ return norm(boxes.map(b=>b.val||'').join('')); }
 
+// Borrado automático si la palabra está mal
 function autoClear(){
-  // borra todo lo no bloqueado, con un pequeño temblor
   EL.gamecard.classList.add('shake');
   setTimeout(()=>{
     EL.gamecard.classList.remove('shake');
@@ -113,7 +117,7 @@ function win(){
 
 function fail(){
   EL.msg.innerHTML = '<span class="bad">Ups, intenta de nuevo.</span>';
-  autoClear(); // borrar automáticamente al fallar
+  autoClear();
 }
 
 function check(){
@@ -121,7 +125,7 @@ function check(){
   else { fail(); }
 }
 
-/* --- Pistas --- */
+/* --------- Pistas ---------- */
 function pay(cost){
   if(coins<cost){ EL.msg.innerHTML = '<span class="bad">No te alcanzan las monedas.</span>'; return false; }
   coins -= cost; saveCoins(coins); EL.coins.textContent = coins; return true;
@@ -147,24 +151,33 @@ function hintSolve(){
   maybeAutoCheck();
 }
 
-/* --- Entrada desde el teclado del dispositivo --- */
-window.addEventListener('keydown', (e)=>{
-  const k = e.key.toUpperCase();
-  if(/^[A-ZÑ]$/.test(k)) typeLetter(k);
-  else if(e.key==='Backspace') backspace();
-  else if(e.key==='Enter') maybeAutoCheck();
-});
+/* --- Entrada desde teclado del dispositivo (SOLO input) --- */
+// Evitar duplicados por ráfagas de algunos teclados
+let lastStamp = 0;
+
+// Letras
 EL.typer.addEventListener('input', (e)=>{
+  const now = performance.now();
+  if (now - lastStamp < 15) return;
+  lastStamp = now;
+
   const v = e.target.value.toUpperCase();
   const ch = v.slice(-1);
   if(/^[A-ZÑ]$/.test(ch)) typeLetter(ch);
   e.target.value = '';
 });
-document.body.addEventListener('click', focusTyper);
+
+// Especiales
+EL.typer.addEventListener('keydown', (e)=>{
+  if(e.key === 'Backspace'){ e.preventDefault(); backspace(); }
+  else if(e.key === 'Enter'){ e.preventDefault(); maybeAutoCheck(); }
+});
 
 /* --- Init --- */
 updateHud();
 newWord();
+
+/* Botones de pistas */
 EL.hintLetter.addEventListener('click', hintLetter);
 EL.hintFirst.addEventListener('click', hintFirst);
 EL.hintSolve.addEventListener('click', hintSolve);
