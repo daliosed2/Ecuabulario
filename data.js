@@ -45,7 +45,7 @@ export const ALL_WORDS = [
   { id:'hacervaca', a:'Hacer vaca', clue:'Reunir dinero entre varios' },
   { id:'yapa', a:'Yapa', clue:'Añadidito extra al comprar' },
   { id:'pilas', a:'Pilas', clue:'Estate atento / ponte listo' },
-  { id:'qbestia', a:'Qué bestia', clue:'¡Qué increíble! (énfasis)' },
+  { id:'qbestia', a:'¡Qué bestia!', clue:'¡Qué increíble! (énfasis)' },
   { id:'canguil', a:'Canguil', clue:'Palomitas de maíz' },
   { id:'visaje', a:'Visaje', clue:'Problema o inconveniente' },
   { id:'fresco', a:'Fresco', clue:'Tranquilo / no hay problema' },
@@ -63,23 +63,41 @@ export const ALL_WORDS = [
   { id:'yasuni', a:'Yasuní', clue:'Parque nacional amazónico' },
 ];
 
-// --- Almacenamiento (global, sin categorías) ---
+// --- Storage global (sin categorías) ---
 const LS = {
   coins: 'ecuabulario_coins',
   solved_all: 'ecuabulario_solved_all'
 };
 
 export function ensureInit(){
-  if(localStorage.getItem(LS.coins)===null) localStorage.setItem(LS.coins,'200');
-  if(localStorage.getItem(LS.solved_all)===null) localStorage.setItem(LS.solved_all,'[]');
+  try{
+    if(localStorage.getItem(LS.coins)===null) localStorage.setItem(LS.coins,'200');
+    if(localStorage.getItem(LS.solved_all)===null) localStorage.setItem(LS.solved_all,'[]');
+  }catch(e){
+    // Fallback en caso de bloqueo de storage
+    window.__ecuabulario_mem__ = window.__ecuabulario_mem__ || {coins:200, solved:[]};
+  }
 }
-export function loadCoins(){ return parseInt(localStorage.getItem(LS.coins)||'0',10); }
-export function saveCoins(v){ localStorage.setItem(LS.coins, String(v)); }
-
-export function getSolvedAll(){ return new Set(JSON.parse(localStorage.getItem(LS.solved_all)||'[]')); }
+export function loadCoins(){
+  try{ return parseInt(localStorage.getItem(LS.coins)||'0',10); }
+  catch{ return (window.__ecuabulario_mem__?.coins)||0; }
+}
+export function saveCoins(v){
+  try{ localStorage.setItem(LS.coins, String(v)); }
+  catch{ (window.__ecuabulario_mem__||(window.__ecuabulario_mem__={coins:0,solved:[]})).coins=v; }
+}
+export function getSolvedAll(){
+  try{ return new Set(JSON.parse(localStorage.getItem(LS.solved_all)||'[]')); }
+  catch{ return new Set(window.__ecuabulario_mem__?.solved||[]); }
+}
 export function addSolvedAll(id){
-  const set = getSolvedAll(); set.add(id);
-  localStorage.setItem(LS.solved_all, JSON.stringify([...set]));
+  try{
+    const set = getSolvedAll(); set.add(id);
+    localStorage.setItem(LS.solved_all, JSON.stringify([...set]));
+  }catch{
+    const mem = (window.__ecuabulario_mem__||(window.__ecuabulario_mem__={coins:0,solved:[]}));
+    if(!mem.solved.includes(id)) mem.solved.push(id);
+  }
 }
 export function getProgressAll(){
   const done = getSolvedAll().size;
