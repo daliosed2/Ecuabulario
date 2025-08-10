@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Ecuabulario</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="bg-yellow">
   <div class="wrap">
@@ -15,34 +15,29 @@
       </div>
     </header>
 
-    <h1 class="title">Juega y aprende 🇪🇨</h1>
+    <main class="card surface">
+      <h1 class="title">Juega y aprende 🇪🇨</h1>
+      <p class="muted">Adivina palabras de Ecuador: comida, jerga, lugares y más.</p>
 
-    <section class="grid">
-      <article class="card cat">
-        <div class="cat-left">
-          <div class="cat-emoji">🍽️</div>
-          <div>
-            <h2>Comida & bebida</h2>
-            <p class="muted">Adivina platos y sabores ecuatorianos.</p>
-            <div class="progress"><div id="bar-food" class="bar"></div></div>
-            <small class="muted"><span id="done-food">0</span>/<span id="total-food">0</span> resueltas</small>
-          </div>
-        </div>
+      <div class="progress"><div id="bar" class="bar"></div></div>
+      <small class="muted"><span id="done">0</span>/<span id="total">0</span> resueltas</small>
+
+      <div class="actions">
         <a class="btn primary" href="game.html">Jugar</a>
-      </article>
-    </section>
+      </div>
+    </main>
 
     <footer class="muted foot">Tu progreso y monedas se guardan en este dispositivo.</footer>
   </div>
 
   <script type="module">
-    import {loadCoins, ensureInit, getProgress, BANKS} from './data.js';
+    import { ensureInit, loadCoins, getProgressAll, ALL_WORDS } from './data.js';
     ensureInit();
     document.getElementById('coins').textContent = loadCoins();
-    const p = getProgress('food');
-    document.getElementById('done-food').textContent  = p.done;
-    document.getElementById('total-food').textContent = BANKS.food.length;
-    document.getElementById('bar-food').style.width   = (p.ratio*100)+'%';
+    const p = getProgressAll();
+    document.getElementById('done').textContent = p.done;
+    document.getElementById('total').textContent = ALL_WORDS.length;
+    document.getElementById('bar').style.width = (p.ratio * 100) + '%';
   </script>
 </body>
 </html>
