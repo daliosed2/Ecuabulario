@@ -6,7 +6,7 @@
   <title>Ecuabulario – Juego</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-anim">
+<body>
   <div class="wrap">
     <header class="topbar">
       <a class="btn" href="index.html">🏠</a>
@@ -15,16 +15,12 @@
         <div class="progress small"><div id="bar" class="bar"></div></div>
       </div>
       <div class="hud">
-        <button id="sound" class="btn" title="Sonidos on/off">🔊</button>
         <div class="coins">🪙 <span id="coins">0</span></div>
       </div>
     </header>
 
     <main class="card gamecard" id="gamecard">
-      <div class="clue-row">
-        <div id="badge" class="badge">🔒</div>
-        <h2 id="clue" class="clue">Cargando…</h2>
-      </div>
+      <h2 id="clue" class="clue">Cargando…</h2>
 
       <div id="slots" class="slots"></div>
 
@@ -37,10 +33,10 @@
       <div id="msg" class="msg"></div>
     </main>
 
-    <section class="kb" id="kb"></section>
+    <!-- Input invisible para abrir el teclado del dispositivo -->
+    <input id="typer" inputmode="latin" autocomplete="off" autocapitalize="characters"
+           spellcheck="false" class="hidden-input" />
   </div>
-
-  <div id="coin-fx"></div> <!-- destino para animaciones de moneda -->
 
   <script type="module" src="game.js"></script>
 </body>
