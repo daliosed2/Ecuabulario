@@ -2,51 +2,16 @@ import {BANKS, norm, ensureInit, loadCoins, saveCoins, getSolved, addSolved, get
 
 ensureInit();
 
-/* --------- Helpers de UI --------- */
-const $ = (id)=>document.getElementById(id);
+const $ = id => document.getElementById(id);
 const EL = {
-  coins: $('coins'), level: $('level'), bar: $('bar'),
-  clue: $('clue'), slots: $('slots'), msg: $('msg'),
-  kb: $('kb'), badge: $('badge'), gamecard: $('gamecard'),
-  sound: $('sound'), coinFx: $('coin-fx')
+  coins:$('coins'), level:$('level'), bar:$('bar'),
+  clue:$('clue'), slots:$('slots'), msg:$('msg'),
+  gamecard:$('gamecard'), typer:$('typer'),
+  hintLetter:$('hint-letter'), hintFirst:$('hint-first'), hintSolve:$('hint-solve')
 };
 
-// Sonidos (opcional, súper cortos)
-let soundOn = localStorage.getItem('ecuabulario_sound') !== 'off';
-const play = (freq=880, ms=90) => {
-  if(!soundOn) return;
-  try{
-    const ctx = new (window.AudioContext||window.webkitAudioContext)();
-    const o = ctx.createOscillator(); const g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    o.type='sine'; o.frequency.value=freq; g.gain.value=0.05;
-    o.start(); setTimeout(()=>{o.stop();ctx.close()}, ms);
-  }catch{}
-};
-EL.sound.textContent = soundOn ? '🔊' : '🔈';
-EL.sound.onclick = ()=>{
-  soundOn = !soundOn;
-  localStorage.setItem('ecuabulario_sound', soundOn?'on':'off');
-  EL.sound.textContent = soundOn ? '🔊' : '🔈';
-};
-
-/* --------- Racha diaria --------- */
-function bumpStreakOnFirstWinToday(){
-  const k = 'ecuabulario_streak';
-  const kdate = 'ecuabulario_streak_date';
-  const last = localStorage.getItem(kdate);
-  const today = new Date().toISOString().slice(0,10);
-  if(last === today) return; // ya se contó hoy
-  const prev = parseInt(localStorage.getItem(k)||'0',10);
-  localStorage.setItem(k, String(prev+1));
-  localStorage.setItem(kdate, today);
-}
-
-/* --------- Estado --------- */
-const params = new URLSearchParams(location.search);
-const CAT = params.get('cat') || 'food';
+const CAT = 'food';
 const BANK = BANKS[CAT];
-if(!BANK){ alert(`Categoría "${CAT}" no existe`); throw new Error('BANK undefined'); }
 
 let coins = loadCoins(); EL.coins.textContent = coins;
 
@@ -55,7 +20,7 @@ let queue = BANK.filter(x=>!solved.has(x.id));
 if(queue.length===0) queue = [...BANK];
 shuffle(queue);
 
-let current=null, answerClean='', boxes=[]; // boxes: {el,char,locked,val}
+let current=null, answerClean='', boxes=[];
 
 function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a; }
 const firstEmpty = () => boxes.find(b=>!b.locked && !b.val);
@@ -68,16 +33,19 @@ function updateHud(){
   EL.coins.textContent = coins;
 }
 
-/* --------- Render palabra --------- */
+function highlightNext(){
+  boxes.forEach(b=>b.el.classList.remove('focus'));
+  const b = firstEmpty();
+  if(b) b.el.classList.add('focus');
+}
+
 function newWord(){
   current = queue.shift();
-  if(!current){ // repoblar si vacía
+  if(!current){
     queue = BANK.filter(x=>!getSolved(CAT).has(x.id));
     if(queue.length===0) queue = [...BANK];
-    shuffle(queue);
-    current = queue.shift();
+    shuffle(queue); current = queue.shift();
   }
-  EL.badge.textContent = '🧩';
   EL.clue.textContent = current.clue;
   EL.msg.textContent = '';
   const text = current.a;
@@ -94,75 +62,58 @@ function newWord(){
     EL.slots.appendChild(s);
     boxes.push({el:s, char: ch, locked:false, val:''});
   }
-  buildKeyboard();
+  focusTyper();
+  highlightNext();
 }
 
-function buildKeyboard(){
-  const letters = 'QWERTYUIOPASDFGHJKLÑZXCVBNM'.split('');
-  EL.kb.innerHTML = '';
-  letters.forEach(L=>{
-    const k = document.createElement('div');
-    k.className = 'key'; k.textContent = L;
-    k.onclick = ()=>typeLetter(L);
-    EL.kb.appendChild(k);
-  });
-  const back = document.createElement('div');
-  back.className='key'; back.textContent='⌫'; back.onclick = backspace;
-  EL.kb.appendChild(back);
-}
+function focusTyper(){ setTimeout(()=>EL.typer.focus(), 60); }
 
-/* --------- Entrada --------- */
 function maybeAutoCheck(){
-  // cuando todo lleno, validar
   if (boxes.every(b => b.val || b.locked)) check();
+  else highlightNext();
 }
 
 function typeLetter(L){
   const b = firstEmpty(); if(!b) return;
   b.val = L; b.el.textContent = L; b.el.classList.add('filled');
-  play(880,60);
   maybeAutoCheck();
 }
 
 function backspace(){
   const i = lastFilled(); if(i<0) return;
-  boxes[i].val=''; boxes[i].el.textContent=''; EL.msg.textContent='';
-  play(220,60);
+  boxes[i].val=''; boxes[i].el.textContent='';
+  EL.msg.textContent='';
+  highlightNext();
 }
 
-// teclado físico
-window.addEventListener('keydown', (e)=>{
-  const k = e.key.toUpperCase();
-  if(/^[A-ZÑ]$/.test(k)) typeLetter(k);
-  else if(e.key==='Backspace') backspace();
-  else if(e.key==='Enter') maybeAutoCheck();
-});
-
-/* --------- Validación y feedback --------- */
 function userGuessClean(){ return norm(boxes.map(b=>b.val||'').join('')); }
 
-function coinFX(){
-  // moneda voladora hacia HUD
-  const span = document.createElement('span');
-  span.className='coin-fly'; span.textContent='🪙';
-  EL.coinFx.appendChild(span);
-  setTimeout(()=>span.remove(),650);
+function autoClear(){
+  // borra todo lo no bloqueado, con un pequeño temblor
+  EL.gamecard.classList.add('shake');
+  setTimeout(()=>{
+    EL.gamecard.classList.remove('shake');
+    boxes.forEach(b=>{ if(!b.locked){ b.val=''; b.el.textContent=''; } });
+    EL.msg.textContent='';
+    highlightNext();
+    focusTyper();
+  }, 220);
 }
 
 function win(){
   EL.msg.innerHTML = '<span class="ok">¡Correcto! +20 🪙</span>';
-  EL.gamecard.classList.remove('shake'); EL.gamecard.classList.add('winflash');
-  coinFX(); play(1200,120);
+  EL.gamecard.classList.add('winflash');
   coins += 20; saveCoins(coins); EL.coins.textContent = coins;
   addSolved(CAT, current.id);
-  bumpStreakOnFirstWinToday();
-  setTimeout(()=>{ EL.gamecard.classList.remove('winflash'); nextItem(); }, 700);
+  setTimeout(()=>{
+    EL.gamecard.classList.remove('winflash');
+    updateHud(); newWord();
+  }, 700);
 }
 
 function fail(){
-  EL.msg.innerHTML = '<span class="bad">Aún no. Intenta de nuevo.</span>';
-  EL.gamecard.classList.add('shake'); play(140,120);
-  setTimeout(()=>EL.gamecard.classList.remove('shake'), 220);
+  EL.msg.innerHTML = '<span class="bad">Ups, intenta de nuevo.</span>';
+  autoClear(); // borrar automáticamente al fallar
 }
 
 function check(){
@@ -170,42 +121,50 @@ function check(){
   else { fail(); }
 }
 
-function nextItem(){ updateHud(); newWord(); }
-
-/* --------- Pistas --------- */
+/* --- Pistas --- */
 function pay(cost){
   if(coins<cost){ EL.msg.innerHTML = '<span class="bad">No te alcanzan las monedas.</span>'; return false; }
   coins -= cost; saveCoins(coins); EL.coins.textContent = coins; return true;
 }
-
 function hintLetter(){
   if(!pay(15)) return;
-  const candidates = boxes.filter(b=>!b.locked && !b.val);
-  if(!candidates.length){ maybeAutoCheck(); return; }
-  const pick = candidates[Math.floor(Math.random()*candidates.length)];
+  const cs = boxes.filter(b=>!b.locked && !b.val);
+  if(!cs.length){ maybeAutoCheck(); return; }
+  const pick = cs[Math.floor(Math.random()*cs.length)];
   pick.val = pick.char.toUpperCase(); pick.el.textContent = pick.val;
-  pick.locked = true; pick.el.classList.add('lock'); play(700,70);
-  maybeAutoCheck();
+  pick.locked = true; pick.el.classList.add('lock'); maybeAutoCheck();
 }
 function hintFirst(){
   if(!pay(10)) return;
   const first = boxes.find(b=>!b.locked);
   if(!first){ maybeAutoCheck(); return; }
   first.val = first.char.toUpperCase(); first.el.textContent = first.val;
-  first.locked = true; first.el.classList.add('lock'); play(700,70);
-  maybeAutoCheck();
+  first.locked = true; first.el.classList.add('lock'); maybeAutoCheck();
 }
 function hintSolve(){
   if(!pay(50)) return;
   boxes.forEach(b=>{ if(!b.locked){ b.val=b.char.toUpperCase(); b.el.textContent=b.val; b.locked=true; b.el.classList.add('lock'); }});
-  play(900,120);
   maybeAutoCheck();
 }
 
-/* --------- Init --------- */
+/* --- Entrada desde el teclado del dispositivo --- */
+window.addEventListener('keydown', (e)=>{
+  const k = e.key.toUpperCase();
+  if(/^[A-ZÑ]$/.test(k)) typeLetter(k);
+  else if(e.key==='Backspace') backspace();
+  else if(e.key==='Enter') maybeAutoCheck();
+});
+EL.typer.addEventListener('input', (e)=>{
+  const v = e.target.value.toUpperCase();
+  const ch = v.slice(-1);
+  if(/^[A-ZÑ]$/.test(ch)) typeLetter(ch);
+  e.target.value = '';
+});
+document.body.addEventListener('click', focusTyper);
+
+/* --- Init --- */
 updateHud();
 newWord();
-
-$('hint-letter').onclick = hintLetter;
-$('hint-first').onclick  = hintFirst;
-$('hint-solve').onclick  = hintSolve;
+EL.hintLetter.addEventListener('click', hintLetter);
+EL.hintFirst.addEventListener('click', hintFirst);
+EL.hintSolve.addEventListener('click', hintSolve);
