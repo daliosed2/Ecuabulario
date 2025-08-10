@@ -1,64 +1,71 @@
 :root{
-  --bg:#0b1220; --bg2:#0f172a; --card:#0e1422; --line:#1f2937;
-  --text:#e5e7eb; --muted:#94a3b8; --ok:#22c55e; --bad:#ef4444; --brand:#10b981;
+  --bg:#0f1014; --card:#151821; --line:#222739;
+  --text:#0f172a; --text-inv:#e7e9ee; --muted:#4b5563;
+  --ok:#16a34a; --bad:#ef4444; --brand:#0ea5e9; /* celeste para acentos */
+  --yellow1:#fff3b0; --yellow2:#ffe08a; --yellow3:#ffd166;
 }
+
+/* Fondo amarillo suave en home */
+.bg-yellow{
+  background: radial-gradient(900px 600px at 20% 0%, var(--yellow1) 0%, var(--yellow2) 50%, var(--yellow3) 100%);
+  min-height: 100vh;
+}
+
 *{box-sizing:border-box}
-body{margin:0;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif}
-
-.bg-anim{
-  background: radial-gradient(1200px 800px at 10% 0%,#0c1a32 0%,#0f172a 45%,#0b1220 100%);
-  background-size: 200% 200%;
-  animation: bgflow 14s ease-in-out infinite;
-}
-@keyframes bgflow{0%{background-position:0% 0%}50%{background-position:100% 50%}100%{background-position:0% 0%}}
-
+body:not(.bg-yellow){background:var(--bg);color:var(--text-inv)}
+body,html{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif}
 .wrap{max-width:900px;margin:0 auto;padding:22px}
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.brand{display:flex;gap:8px;align-items:center}.logo{width:36px;height:36px;border-radius:8px;background:var(--brand);display:grid;place-items:center;color:#052012;font-weight:900}
-.title{margin:8px 0 12px}
-.hud{display:flex;align-items:center;gap:10px}
-.streak,.coins{background:#0b1324;border:1px solid #253042;padding:7px 10px;border-radius:999px;font-weight:700}
+.brand{display:flex;gap:8px;align-items:center}
+.logo{width:36px;height:36px;border-radius:8px;background:#111827;color:#fff;display:grid;place-items:center;font-weight:900}
+.title{color:#111827}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}
-.card{background:linear-gradient(180deg,#0f172a,#0d1526);border:1px solid #1f2a3c;border-radius:18px;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.45)}
+.hud,.status{display:flex;align-items:center;gap:10px}
+.coins{background:#0d111b;border:1px solid #232a3d;padding:7px 10px;border-radius:999px;font-weight:700;color:#e7e9ee}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.card{background:#ffffffcc;border:1px solid #e5e7eb;border-radius:18px;padding:18px;backdrop-filter: blur(2px)}
+.cat-emoji{font-size:32px}
 .cat{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .cat-left{display:flex;gap:14px;align-items:center}
-.cat-emoji{font-size:32px}
-.muted{color:var(--muted)}
-.progress{height:10px;background:#1f2937;border-radius:999px;overflow:hidden;margin-top:8px}
+.muted{color:#4b5563}
+.progress{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
 .progress.small{height:8px}
 .bar{height:100%;background:linear-gradient(90deg,#22c55e,#84cc16);width:0%}
-.btn{border:1px solid var(--line);background:#0b1324;color:var(--text);padding:9px 14px;border-radius:12px;cursor:pointer;text-decoration:none;transition:.15s}
-.btn:hover{transform:translateY(-1px);border-color:#334155}
-.btn.primary{background:#16a34a;border-color:#16a34a;color:#05280e;font-weight:700}
+.btn{border:1px solid #111827;background:#111827;color:#fff;padding:9px 14px;border-radius:12px;cursor:pointer;text-decoration:none}
+.btn.primary{background:#111827}
+
+.foot{margin-top:16px;color:#374151}
+
+/* --- Pantalla de juego (oscuro neutro) --- */
+.card.gamecard{background:linear-gradient(180deg,#141826,#111726);border:1px solid var(--line);color:var(--text-inv)}
+.clue{margin:10px 0 14px}
+.hints{display:flex;gap:8px;flex-wrap:wrap}
 .pill{padding:8px 12px;border-radius:999px;border:1px solid #293042;background:#121826;color:#cbd5e1;cursor:pointer}
-.foot{margin-top:16px}
 
-.gamecard{position:relative;overflow:hidden}
-.clue-row{display:flex;align-items:center;gap:10px}
-.badge{background:#0b1324;border:1px solid #223048;border-radius:8px;padding:6px 8px}
-
-.slots{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}
-.slot{width:48px;height:56px;border:2px solid #27344a;border-radius:12px;display:grid;place-items:center;font-size:1.25rem;background:#0b1324;transition:transform .08s}
-.slot.space{border-color:transparent;background:transparent;width:18px}
+.slots{
+  display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 16px;
+  justify-content:center;
+}
+/* Recuadros grandes y protagonistas */
+.slot{
+  width:58px;height:70px;border:3px solid #2f3a55;border-radius:14px;
+  display:grid;place-items:center;font-weight:800;font-size:1.6rem;
+  background:#0b1324;color:#e8ecf4; box-shadow:0 6px 22px rgba(0,0,0,.35);
+  transition:transform .08s, border-color .15s, box-shadow .15s;
+}
+.slot.space{border-color:transparent;background:transparent;width:20px;box-shadow:none}
 .slot.filled{animation:pop .08s ease}
+.slot.focus{border-color:#60a5fa; box-shadow:0 0 0 3px rgba(96,165,250,.25)}
 .slot.lock{background:#0f2a18;border-color:#1f4d2c}
 @keyframes pop{0%{transform:scale(.92)}100%{transform:scale(1)}}
 
-.kb{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin-top:12px}
-.key{padding:13px 0;border-radius:10px;border:1px solid #2a3446;background:#0e1624;text-align:center;cursor:pointer;user-select:none}
-.key:active{transform:scale(.98)}
-@media(max-width:520px){.slot{width:42px;height:50px}.kb{grid-template-columns:repeat(9,1fr)}}
-
 .msg{min-height:24px;margin-top:10px}
 .ok{color:var(--ok)} .bad{color:var(--bad)}
-
 .shake{animation:shake .18s linear 0s 2}
 @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-4px)}50%{transform:translateX(4px)}75%{transform:translateX(-3px)}100%{transform:translateX(0)}}
 .winflash{box-shadow:0 0 0 0 rgba(34,197,94,.0);animation:flash .7s ease}
-@keyframes flash{0%{box-shadow:0 0 0 0 rgba(34,197,94,.0)}45%{box-shadow:0 0 40px 6px rgba(34,197,94,.4)}100%{box-shadow:0 0 0 0 rgba(34,197,94,.0)}}
+@keyframes flash{0%{box-shadow:0 0 0 0 rgba(34,197,94,.0)}45%{box-shadow:0 0 40px 6px rgba(34,197,94,.35)}100%{box-shadow:0 0 0 0 rgba(34,197,94,.0)}}
 
-/* moneda voladora */
-#coin-fx{position:fixed;inset:0;pointer-events:none}
-.coin-fly{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:22px;animation:fly 600ms ease forwards}
-@keyframes fly{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}20%{opacity:1}80%{transform:translate(calc(50vw - 40px), -36vh) scale(1)}100%{opacity:0;transform:translate(calc(50vw - 40px), -36vh) scale(1)}}
+.hidden-input{position:fixed;left:-9999px;opacity:0}
+@media(max-width:520px){.slot{width:52px;height:64px;font-size:1.4rem}}
