@@ -4,7 +4,7 @@ import {
   getSolvedAll, addSolvedAll, getProgressAll
 } from './data.js';
 
-ensureInit();
+try { ensureInit(); } catch {}
 
 const $ = id => document.getElementById(id);
 const EL = {
@@ -66,8 +66,7 @@ function newWord(){
   EL.slots.innerHTML = '';
   boxes = [];
 
-  // === NUEVO: agrupar por palabras ===
-  // Separamos por espacios y guiones; cada token es una "palabra" visual.
+  // Agrupar por PALABRAS (sin “slot space”)
   const tokens = text.split(/[\s-]+/).filter(t => t.length);
   tokens.forEach(token => {
     const w = document.createElement('div');
@@ -81,21 +80,21 @@ function newWord(){
     EL.slots.appendChild(w);
   });
 
+  // Delegación: tocar cualquier slot/word enfoca el input
+  const focusTyperSync = ()=>{
+    try {
+      EL.typer.focus({ preventScroll:true });
+      const len = EL.typer.value.length;
+      EL.typer.setSelectionRange(len, len);
+    } catch {}
+  };
+  EL.slots.addEventListener('click', focusTyperSync, { passive:true });
+  EL.slots.addEventListener('touchstart', focusTyperSync, { passive:true });
+
   highlightNext();
 }
 
-// ------- Enfoque del input SOLO al tocar un recuadro -------
-function focusTyperSync(){
-  try {
-    EL.typer.focus({ preventScroll:true });
-    const len = EL.typer.value.length;
-    EL.typer.setSelectionRange(len, len);
-  } catch {}
-}
-EL.slots.addEventListener('click', focusTyperSync, { passive:true });
-EL.slots.addEventListener('touchstart', focusTyperSync, { passive:true });
-
-// ------- Validación -------
+// Validación
 function maybeAutoCheck(){
   if (boxes.every(b => b.val || b.locked)) check();
   else highlightNext();
@@ -103,9 +102,7 @@ function maybeAutoCheck(){
 
 function typeLetter(L){
   const b = firstEmpty(); if (!b) return;
-  b.val = L;
-  b.el.textContent = L;
-  b.el.classList.add('filled');
+  b.val = L; b.el.textContent = L; b.el.classList.add('filled');
   maybeAutoCheck();
 }
 
@@ -123,12 +120,12 @@ function userGuessClean(){
 
 function autoClear(){
   EL.gamecard.classList.add('shake');
-  setTimeout(()=>{
+  requestAnimationFrame(()=>setTimeout(()=>{
     EL.gamecard.classList.remove('shake');
     boxes.forEach(b => { if(!b.locked){ b.val=''; b.el.textContent=''; } });
     EL.msg.textContent = '';
     highlightNext();
-  }, 220);
+  }, 220));
 }
 
 function win(){
@@ -153,7 +150,7 @@ function check(){
   else fail();
 }
 
-// ------- Pistas -------
+// Pistas
 function pay(cost){
   if (coins < cost){
     EL.msg.innerHTML = '<span class="bad">No te alcanzan las monedas.</span>';
@@ -164,6 +161,7 @@ function pay(cost){
 }
 
 function hintLetter(){
+  if(!boxes.length) return;
   if(!pay(15)) return;
   const cs = boxes.filter(b => !b.locked && !b.val);
   if(!cs.length){ maybeAutoCheck(); return; }
@@ -172,8 +170,8 @@ function hintLetter(){
   pick.locked = true; pick.el.classList.add('lock');
   maybeAutoCheck();
 }
-
 function hintFirst(){
+  if(!boxes.length) return;
   if(!pay(10)) return;
   const first = boxes.find(b => !b.locked);
   if(!first){ maybeAutoCheck(); return; }
@@ -181,8 +179,8 @@ function hintFirst(){
   first.locked = true; first.el.classList.add('lock');
   maybeAutoCheck();
 }
-
 function hintSolve(){
+  if(!boxes.length) return;
   if(!pay(50)) return;
   boxes.forEach(b=>{
     if(!b.locked){
@@ -194,29 +192,30 @@ function hintSolve(){
   maybeAutoCheck();
 }
 
-// ------- Entrada SOLO desde el input (PC y móvil) -------
-// Anti-doble de algunos teclados
-let lastStamp = 0;
+// Helpers de eventos múltiples
+function onMany(el, evts, fn, opts={passive:true}){ evts.forEach(e=>el?.addEventListener(e, fn, opts)); }
+onMany(EL.hintLetter, ['pointerup','touchend','click'], hintLetter);
+onMany(EL.hintFirst,  ['pointerup','touchend','click'], hintFirst);
+onMany(EL.hintSolve,  ['pointerup','touchend','click'], hintSolve);
 
-// 1) Letras: llegan por 'input'
+// Entrada SOLO desde el input (PC y móvil) — Anti-doble
+let lastStamp = 0;
+// Letras
 EL.typer.addEventListener('input', (e)=>{
   const now = performance.now();
   if (now - lastStamp < 15) return;
   lastStamp = now;
-
   const v = e.target.value.toUpperCase();
   const ch = v.slice(-1);
   if(/^[A-ZÑ]$/.test(ch)) typeLetter(ch);
   e.target.value = '';
 });
-
-// 2) Borrar / Enter (en algunos teclados sí dispara keydown)
+// Borrar / Enter (algunos teclados)
 EL.typer.addEventListener('keydown', (e)=>{
   if(e.key === 'Backspace'){ e.preventDefault(); backspace(); }
   else if(e.key === 'Enter'){ e.preventDefault(); maybeAutoCheck(); }
 });
-
-// 3) iOS/Android: backspace confiable con 'beforeinput'
+// Backspace confiable en iOS/Android
 EL.typer.addEventListener('beforeinput', (e)=>{
   if (e.inputType === 'deleteContentBackward'){
     e.preventDefault();
@@ -224,21 +223,15 @@ EL.typer.addEventListener('beforeinput', (e)=>{
   }
 });
 
-// ------- Fallback contenteditable (iOS muy terco) -------
+// Fallback contenteditable (iOS MUY terco). No bloquea taps (pointer-events:none en CSS).
 if (EL.editableHack) {
   EL.editableHack.addEventListener('input', ()=>{
     const ch = EL.editableHack.textContent.slice(-1).toUpperCase();
     if(/^[A-ZÑ]$/.test(ch)) typeLetter(ch);
     EL.editableHack.textContent = '';
   });
-  const focusHack = ()=> {
-    try { EL.editableHack.focus({ preventScroll:true }); } catch {}
-  };
-  // Solo cuando tocan los recuadros (mismo comportamiento que el input)
-  EL.slots.addEventListener('click', focusHack, { passive:true });
-  EL.slots.addEventListener('touchstart', focusHack, { passive:true });
 }
 
-// ------- Init -------
+// Init
 updateHud();
 newWord();
