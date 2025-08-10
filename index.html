@@ -6,82 +6,44 @@
   <title>Ecuabulario</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-anim">
+<body class="bg-yellow">
   <div class="wrap">
     <header class="topbar">
       <div class="brand"><span class="logo">EC</span><b>Ecuabulario</b></div>
       <div class="hud">
-        <div class="streak" title="Racha diaria">🔥 <span id="streak">0</span></div>
-        <div class="coins" title="Monedas">🪙 <span id="coins">0</span></div>
+        <div class="coins">🪙 <span id="coins">0</span></div>
       </div>
     </header>
 
-    <h1 class="title">Colecciones</h1>
+    <h1 class="title">Juega y aprende 🇪🇨</h1>
 
-    <section id="cards" class="grid">
-      <!-- Comida -->
+    <!-- Una sola tarjeta -->
+    <section class="grid">
       <article class="card cat">
         <div class="cat-left">
           <div class="cat-emoji">🍽️</div>
           <div>
             <h2>Comida & bebida</h2>
-            <p class="muted">Sabores que nos identifican en Ecuador.</p>
+            <p class="muted">Adivina platos y sabores ecuatorianos.</p>
             <div class="progress"><div id="bar-food" class="bar"></div></div>
             <small class="muted"><span id="done-food">0</span>/<span id="total-food">0</span> resueltas</small>
           </div>
         </div>
-        <a class="btn primary" href="game.html?cat=food">Jugar</a>
-      </article>
-
-      <!-- Jerga -->
-      <article class="card cat">
-        <div class="cat-left">
-          <div class="cat-emoji">🗣️</div>
-          <div>
-            <h2>Jerga & expresiones</h2>
-            <p class="muted">Habla como un ecuatoriano de ley.</p>
-            <div class="progress"><div id="bar-slang" class="bar"></div></div>
-            <small class="muted"><span id="done-slang">0</span>/<span id="total-slang">0</span> resueltas</small>
-          </div>
-        </div>
-        <a class="btn primary" href="game.html?cat=slang">Jugar</a>
-      </article>
-
-      <!-- Lugares -->
-      <article class="card cat">
-        <div class="cat-left">
-          <div class="cat-emoji">🗺️</div>
-          <div>
-            <h2>Lugares & cultura</h2>
-            <p class="muted">Íconos, ciudades y naturaleza.</p>
-            <div class="progress"><div id="bar-places" class="bar"></div></div>
-            <small class="muted"><span id="done-places">0</span>/<span id="total-places">0</span> resueltas</small>
-          </div>
-        </div>
-        <a class="btn primary" href="game.html?cat=places">Jugar</a>
+        <a class="btn primary" href="game.html">Jugar</a>
       </article>
     </section>
 
-    <footer class="muted foot">Tu progreso, monedas y racha se guardan en este dispositivo.</footer>
+    <footer class="muted foot">Tu progreso y monedas se guardan en este dispositivo.</footer>
   </div>
 
   <script type="module">
     import {loadCoins, ensureInit, getProgress, BANKS} from './data.js';
     ensureInit();
-    // monedas
     document.getElementById('coins').textContent = loadCoins();
-    // racha
-    const streak = parseInt(localStorage.getItem('ecuabulario_streak')||'0',10);
-    document.getElementById('streak').textContent = streak;
-
-    // helper para pintar progreso de cada categoría
-    const paint = (cat) => {
-      const p = getProgress(cat);
-      document.getElementById(`done-${cat}`).textContent  = p.done;
-      document.getElementById(`total-${cat}`).textContent = BANKS[cat].length;
-      document.getElementById(`bar-${cat}`).style.width   = (p.ratio*100)+'%';
-    };
-    ['food','slang','places'].forEach(paint);
+    const p = getProgress('food');
+    document.getElementById('done-food').textContent  = p.done;
+    document.getElementById('total-food').textContent = BANKS.food.length;
+    document.getElementById('bar-food').style.width   = (p.ratio*100)+'%';
   </script>
 </body>
 </html>
