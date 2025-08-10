@@ -27,16 +27,27 @@
       <div class="hints">
         <button id="hint-letter" class="pill">Revelar letra (🪙15)</button>
         <button id="hint-first"  class="pill">Primera letra (🪙10)</button>
-          <!--
-        <button id="hint-solve"  class="pill">Resolver (🪙50)</button> -->
+        <button id="hint-solve"  class="pill">Resolver (🪙50)</button>
       </div>
 
       <div id="msg" class="msg"></div>
     </main>
 
-    <!-- Input invisible para abrir el teclado del dispositivo -->
-    <input id="typer" inputmode="latin" autocomplete="off" autocapitalize="characters"
-           spellcheck="false" class="hidden-input" />
+    <!-- Input para levantar el teclado nativo -->
+    <input
+      id="typer"
+      type="text"
+      inputmode="text"
+      autocomplete="off"
+      autocapitalize="off"
+      autocorrect="off"
+      enterkeyhint="go"
+      spellcheck="false"
+      class="hidden-input"
+    />
+
+    <!-- Fallback para iOS tercos -->
+    <div id="editableHack" contenteditable="true" class="hidden-input" aria-label="Escribe aquí"></div>
   </div>
 
   <script type="module" src="game.js"></script>
