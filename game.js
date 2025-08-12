@@ -17,17 +17,17 @@ const EL = {
   gamecard: $('gamecard'),
   typer: $('typer'),
   hintLetter: $('hint-letter'),
-  hintFirst: $('hint-first'),
+  hintFirst:  $('hint-first'),
   gameover: $('gameover'),
-  goText: $('go-text'),
-  goRetry: $('go-retry'),
+  goText:   $('go-text'),
+  goRetry:  $('go-retry'),
 };
 
-// Desplazamiento suave de la tarjeta cuando sube el teclado (requiere .kb-fix en CSS)
+// Mover la tarjeta cuando sube el teclado (clase definida en CSS)
 EL.gamecard?.classList.add('kb-fix');
 
 let points = loadPoints();
-if (EL.pointsEl) EL.pointsEl.textContent = points;
+EL.pointsEl && (EL.pointsEl.textContent = points);
 
 // ------- Banco global -------
 const solved = getSolvedAll();
@@ -43,9 +43,9 @@ function lastFilled(){ for(let i=boxes.length-1;i>=0;i--) if(boxes[i].val && !bo
 
 function updateHud(){
   const p = getProgressAll();
-  if (EL.level) EL.level.textContent = `Nivel ${p.level}`;
-  if (EL.bar) EL.bar.style.width = (p.ratio * 100) + '%';
-  if (EL.pointsEl) EL.pointsEl.textContent = points;
+  EL.level && (EL.level.textContent = `Nivel ${p.level}`);
+  EL.bar && (EL.bar.style.width = (p.ratio * 100) + '%');
+  EL.pointsEl && (EL.pointsEl.textContent = points);
   savePoints(points);
 }
 
@@ -54,7 +54,6 @@ function highlightNext(){
   const b = firstEmpty();
   if (b){
     b.el.classList.add('focus');
-    // Centra el recuadro activo (útil cuando el teclado tapa parte de la vista)
     try { b.el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' }); } catch {}
   }
 }
@@ -69,10 +68,10 @@ const cssNum = (name, fallback)=> {
   return Number.isFinite(n) ? n : fallback;
 };
 const BASE = {
-  size: cssNum('--slot-size', 62),
-  gapL: cssNum('--gap-letter', 12),
-  gapRow: cssNum('--gap-word-row', 14),
-  gapCol: cssNum('--gap-word-col', 18),
+  size:  cssNum('--slot-size', 62),
+  gapL:  cssNum('--gap-letter', 12),
+  gapRow:cssNum('--gap-word-row', 14),
+  gapCol:cssNum('--gap-word-col', 18),
 };
 const setSize = (px)=> root.style.setProperty('--slot-size', px+'px');
 const setGaps = (l,r,c)=>{
@@ -87,27 +86,23 @@ const debounce = (fn, wait=120)=>{
 function fitSlots(){
   if(!current) return;
 
-  // Reset base para medir
   setSize(BASE.size);
   setGaps(BASE.gapL, BASE.gapRow, BASE.gapCol);
 
-  // Tamaño por palabra más larga para entrar en ancho
   const containerW = EL.slots.clientWidth || EL.slots.getBoundingClientRect().width || (window.innerWidth - 40);
   const words = current.a.split(/[\s-]+/).filter(Boolean);
   const longest = words.reduce((m,w)=>Math.max(m,w.length), 1);
   const gapL = cssNum('--gap-letter', BASE.gapL);
 
   let size = Math.floor( (containerW - gapL*(longest-1)) / longest );
-  size = Math.min(size, 80);   // techo
-  size = Math.max(size, 26);   // piso
+  size = Math.min(size, 80);
+  size = Math.max(size, 26);
   setSize(size);
 
-  // Verificar alto disponible y reescalar si hiciera falta
-  // Reserva para pistas y mensaje (~160px)
   let tries = 0;
   while (tries < 4){
     const rect = EL.slots.getBoundingClientRect();
-    const reserve = 160;
+    const reserve = 160; // espacio para pistas+mensaje
     const availH = Math.max(120, window.innerHeight - rect.top - reserve);
     const needH  = EL.slots.scrollHeight;
     if (needH <= availH) break;
@@ -137,14 +132,13 @@ function newWord(){
     current = queue.shift();
   }
 
-  if (EL.clue) EL.clue.textContent = current.clue;
-  if (EL.msg) EL.msg.textContent = '';
+  EL.clue && (EL.clue.textContent = current.clue);
+  EL.msg && (EL.msg.textContent = '');
   const text = current.a;
   answerClean = norm(text);
   EL.slots.innerHTML = '';
   boxes = [];
 
-  // Agrupar por PALABRAS (sin “slot space”)
   const tokens = text.split(/[\s-]+/).filter(t => t.length);
   tokens.forEach(token => {
     const w = document.createElement('div');
@@ -159,14 +153,15 @@ function newWord(){
   });
 
   highlightNext();
-  requestAnimationFrame(fitSlots); // ajustar tamaño sin scroll
+  requestAnimationFrame(fitSlots);
 }
 
 /* =======================
      Teclado / enfoque
    ======================= */
-// Centinela para que Backspace SIEMPRE funcione en móvil
+// Declaración ÚNICA del centinela (arregla tu error)
 const SENTINEL = '•';
+
 function setTyperSentinel(){
   EL.typer.value = SENTINEL;
   try { EL.typer.setSelectionRange(EL.typer.value.length, EL.typer.value.length); } catch {}
@@ -193,12 +188,12 @@ function resetKbFix(){
 function focusTyperSync(){
   try {
     EL.typer.focus({ preventScroll:true });
-    setTyperSentinel();   // centinela para backspace fiable
+    setTyperSentinel();   // backspace fiable
     applyKbFix();         // sube la tarjeta mientras el teclado esté visible
   } catch {}
 }
 // Abrir teclado SOLO al tocar un recuadro o palabra
-['click','touchstart'].forEach(evt=>{
+;['click','touchstart'].forEach(evt=>{
   EL.slots.addEventListener(evt, focusTyperSync, { passive:true });
 });
 
@@ -229,7 +224,7 @@ function backspace(){
   const i = lastFilled(); if (i < 0) return;
   boxes[i].val = '';
   boxes[i].el.textContent = '';
-  if (EL.msg) EL.msg.textContent = '';
+  EL.msg && (EL.msg.textContent = '');
   highlightNext();
 }
 function userGuessClean(){ return norm(boxes.map(b => b.val || '').join('')); }
@@ -237,25 +232,25 @@ function userGuessClean(){ return norm(boxes.map(b => b.val || '').join('')); }
 function showGameOver(){
   const figures = ['Eloy Alfaro','Manuela Sáenz','Rumiñahui','Dolores Cacuango','Oswaldo Guayasamín','Eugenio Espejo','Abdón Calderón','José Joaquín de Olmedo'];
   const name = figures[Math.floor(Math.random()*figures.length)];
-  if (EL.goText) EL.goText.textContent = `Has decepcionado a ${name}`;
-  if (EL.gameover) EL.gameover.style.display = 'flex';
+  EL.goText && (EL.goText.textContent = `Has decepcionado a ${name}`);
+  EL.gameover && (EL.gameover.style.display = 'flex');
 }
 EL.goRetry?.addEventListener('click', ()=>{
   points = 100; updateHud();
-  if (EL.gameover) EL.gameover.style.display = 'none';
+  EL.gameover && (EL.gameover.style.display = 'none');
   newWord();
 });
 
 function win(){
   points += 50; updateHud();
-  if (EL.msg) EL.msg.innerHTML = '<span class="ok">¡Correcto! +50 ⭐️</span>';
+  EL.msg && (EL.msg.innerHTML = '<span class="ok">¡Correcto! +50 ⭐️</span>');
   EL.gamecard.classList.add('winflash');
   addSolvedAll(current.id);
   setTimeout(()=>{ EL.gamecard.classList.remove('winflash'); newWord(); }, 700);
 }
 function fail(){
   points -= 20; updateHud();
-  if (EL.msg) EL.msg.innerHTML = '<span class="bad">Incorrecto (-20 ⭐️)</span>';
+  EL.msg && (EL.msg.innerHTML = '<span class="bad">Incorrecto (-20 ⭐️)</span>');
   if (navigator.vibrate) navigator.vibrate(20);
   if (points <= 0){ showGameOver(); return; }
   autoClear();
@@ -267,7 +262,7 @@ function check(){ (userGuessClean() === answerClean) ? win() : fail(); }
    ======================= */
 function pay(cost){
   if (points < cost){
-    if (EL.msg) EL.msg.innerHTML = '<span class="bad">No te alcanzan los puntos.</span>';
+    EL.msg && (EL.msg.innerHTML = '<span class="bad">No te alcanzan los puntos.</span>');
     return false;
   }
   points -= cost; updateHud(); return true;
@@ -299,8 +294,6 @@ function hintFirst(){
    ======================= */
 // Anti-doble de algunos teclados
 let lastStamp = 0;
-// Centinela para backspace fiable en móvil
-const SENTINEL = '•';
 
 // Letras: por 'input'. Consumimos todo lo distinto al centinela
 EL.typer.addEventListener('input', (e)=>{
@@ -345,7 +338,7 @@ function autoClear(){
   requestAnimationFrame(()=>setTimeout(()=>{
     EL.gamecard.classList.remove('shake');
     boxes.forEach(b => { if(!b.locked){ b.val=''; b.el.textContent=''; } });
-    if (EL.msg) EL.msg.textContent = '';
+    EL.msg && (EL.msg.textContent = '');
     highlightNext();
   }, 220));
 }
