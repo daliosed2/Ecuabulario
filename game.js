@@ -19,7 +19,7 @@ const EL = {
   hintLetter: $('hint-letter'),
   hintFirst: $('hint-first'),
   hintSolve: $('hint-solve'),
-  editableHack: $('editableHack'),
+  editableHack: $('editableHack'), // opcional
 };
 
 let coins = loadCoins();
@@ -78,11 +78,11 @@ const debounce = (fn, wait=120)=>{
 function fitSlots(){
   if(!current) return;
 
-  // 1) Reset a base para medir
+  // Reset a base para medir
   setSize(BASE.size);
   setGaps(BASE.gapL, BASE.gapRow, BASE.gapCol);
 
-  // 2) Calcular tamaño por palabra más larga para entrar en ancho
+  // Tamaño por palabra más larga para entrar en ancho
   const containerW = EL.slots.clientWidth || EL.slots.getBoundingClientRect().width || (window.innerWidth - 40);
   const words = current.a.split(/[\s-]+/).filter(Boolean);
   const longest = words.reduce((m,w)=>Math.max(m,w.length), 1);
@@ -93,8 +93,8 @@ function fitSlots(){
   size = Math.max(size, 26);   // piso
   setSize(size);
 
-  // 3) Verificar alto disponible y reescalar si hiciera falta
-  // Reservamos espacio para pistas y mensaje (~160px)
+  // Verificar alto disponible y reescalar si hiciera falta
+  // Reserva para pistas y mensaje (~160px)
   let tries = 0;
   while (tries < 4){
     const rect = EL.slots.getBoundingClientRect();
@@ -151,26 +151,27 @@ function newWord(){
   });
 
   highlightNext();
-  // Ajustar tamaño sin scroll en el siguiente frame
-  requestAnimationFrame(fitSlots);
+  requestAnimationFrame(fitSlots); // ajustar tamaño sin scroll
 }
 
 /* =======================
      Teclado / enfoque
    ======================= */
-// Abrir teclado SOLO al tocar un recuadro (o palabra)
+// Centinela para que Backspace SIEMPRE funcione en móvil
+const SENTINEL = '•';
+function setTyperSentinel(){
+  EL.typer.value = SENTINEL;
+  try { EL.typer.setSelectionRange(EL.typer.value.length, EL.typer.value.length); } catch {}
+}
 function focusTyperSync(){
   try {
     EL.typer.focus({ preventScroll:true });
-    const len = EL.typer.value.length;
-    EL.typer.setSelectionRange(len, len);
+    setTyperSentinel();
   } catch {}
 }
-const focusHack = ()=>{ try{ EL.editableHack?.focus({preventScroll:true}); }catch{} };
-
-// Delegación: tocar el contenedor de slots
+// Abrir teclado SOLO al tocar un recuadro o palabra
 ['click','touchstart'].forEach(evt=>{
-  EL.slots.addEventListener(evt, ()=>{ focusTyperSync(); focusHack(); }, { passive:true });
+  EL.slots.addEventListener(evt, focusTyperSync, { passive:true });
 });
 
 // Recalcular al rotar o redimensionar (con debounce)
@@ -227,6 +228,7 @@ function win(){
 
 function fail(){
   EL.msg.innerHTML = '<span class="bad">Ups, intenta de nuevo.</span>';
+  if (navigator.vibrate) navigator.vibrate(20);
   autoClear();
 }
 
@@ -288,43 +290,44 @@ onMany(EL.hintSolve,  ['pointerup','touchend','click'], hintSolve);
 /* =======================
   Entrada SOLO desde input
    ======================= */
-// Anti-doble de algunos teclados
 let lastStamp = 0;
 
-// Letras
+// a) Letras: por 'input'. Consumimos TODO lo distinto al centinela
 EL.typer.addEventListener('input', (e)=>{
   const now = performance.now();
-  if (now - lastStamp < 15) return;
+  if (now - lastStamp < 15) { setTyperSentinel(); return; } // anti-doble
   lastStamp = now;
 
-  const v = e.target.value.toUpperCase();
-  const ch = v.slice(-1);
-  if(/^[A-ZÑ]$/.test(ch)) typeLetter(ch);
-  e.target.value = '';
+  const v = e.target.value;
+  for (let i = 0; i < v.length; i++){
+    const ch = v[i].toUpperCase();
+    if (ch !== SENTINEL && /^[A-ZÑ]$/.test(ch)) typeLetter(ch);
+  }
+  setTyperSentinel();
 });
 
-// Borrar / Enter (algunos teclados)
-EL.typer.addEventListener('keydown', (e)=>{
-  if(e.key === 'Backspace'){ e.preventDefault(); backspace(); }
-  else if(e.key === 'Enter'){ e.preventDefault(); maybeAutoCheck(); }
-});
-
-// Backspace confiable en iOS/Android
+// b) Backspace confiable en iOS/Android
 EL.typer.addEventListener('beforeinput', (e)=>{
   if (e.inputType === 'deleteContentBackward'){
     e.preventDefault();
     backspace();
+    setTyperSentinel();
   }
 });
 
-// Fallback contenteditable (iOS MUY terco) — no intercepta taps (pointer-events:none en CSS)
-if (EL.editableHack) {
-  EL.editableHack.addEventListener('input', ()=>{
-    const ch = EL.editableHack.textContent.slice(-1).toUpperCase();
-    if(/^[A-ZÑ]$/.test(ch)) typeLetter(ch);
-    EL.editableHack.textContent = '';
-  });
-}
+// c) Fallback en el propio input (algunos teclados)
+EL.typer.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){ e.preventDefault(); maybeAutoCheck(); }
+  if(e.key === 'Backspace'){ e.preventDefault(); backspace(); setTyperSentinel(); }
+});
+
+// d) Fallback global solo Backspace/Enter si el input NO tiene foco
+document.addEventListener('keydown', (e)=>{
+  if (document.activeElement === EL.typer) return;
+  if (e.key === 'Backspace' || e.key === 'Enter') e.preventDefault();
+  if (e.key === 'Backspace') backspace();
+  if (e.key === 'Enter') maybeAutoCheck();
+}, { passive:false });
 
 /* =======================
            Init
