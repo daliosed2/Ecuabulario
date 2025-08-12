@@ -49,6 +49,8 @@ export const ALL_WORDS = [
   { id:'canguil', a:'Canguil', clue:'Palomitas de maíz' },
   { id:'visaje', a:'Visaje', clue:'Problema o inconveniente' },
   { id:'fresco', a:'Fresco', clue:'Tranquilo / no hay problema' },
+  { id:'yucho', a:'Yucho', clue:'Persona sin prendas de vestir' },
+  { id:'shunsho', a:'shunsho', clue:'tonto/menso/bobo' }
 
   // Lugares & cultura
   { id:'mitaddelmundo', a:'Mitad del Mundo', clue:'Monumento y complejo turístico en Quito' },
