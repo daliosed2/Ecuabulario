@@ -37,7 +37,7 @@ export const ALL_WORDS = [
   { id:'chendo', a:'Chendo', clue:'Es broma / estoy jugando' },
   { id:'bacan', a:'Bacán', clue:'Muy bueno, agradable' },
   { id:'camello', a:'Camello', clue:'Trabajo / empleo' },
-  { id:'chiro', a:'Estar chiro', clue:'Estar sin dinero' },
+  { id:'chiro', a:'Chiro', clue:'Estar sin dinero' },
   { id:'mashi', a:'Mashi', clue:'Amigo (kichwa castellanizado)' },
   { id:'full', a:'Full', clue:'Mucho / en gran cantidad' },
   { id:'guagua', a:'Guagua', clue:'Bebé / niño pequeño' },
