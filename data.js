@@ -1,8 +1,8 @@
-// Normaliza texto para comparación
+// Normaliza texto para comparación (sin tildes, espacios ni símbolos)
 export const norm = (s) => s
   .toLowerCase()
-  .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // sin tildes
-  .replace(/[^a-zñ]/g,'');
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // quita tildes
+  .replace(/[^a-zñ]/g,''); 
 
 // ---- Banco global (mezcla de comida, jerga y lugares) ----
 export const ALL_WORDS = [
@@ -65,43 +65,44 @@ export const ALL_WORDS = [
   { id:'yasuni', a:'Yasuní', clue:'Parque nacional amazónico' },
 ];
 
-// --- Storage global (sin categorías) ---
+// --- Storage global (PUNTOS + resueltos) ---
 const LS = {
-  points: 'ecuabulario_points',           // PUNTOS del usuario
-  solved_all: 'ecuabulario_solved_all'    // Palabras resueltas
+  points: 'ecuabulario_points',           // puntos del usuario
+  solved_all: 'ecuabulario_solved_all'    // palabras resueltas
 };
 
 export function ensureInit(){
   try{
-    if(localStorage.getItem(LS.points)===null) localStorage.setItem(LS.points,'100');  // inicia con 100
+    if(localStorage.getItem(LS.points)===null) localStorage.setItem(LS.points,'100');  // empieza con 100
     if(localStorage.getItem(LS.solved_all)===null) localStorage.setItem(LS.solved_all,'[]');
   }catch(e){
+    // Fallback si el storage está bloqueado
     window.__ecuabulario_mem__ = window.__ecuabulario_mem__ || {points:100, solved:[]};
   }
 }
 
 export function loadPoints(){
   try{ return parseInt(localStorage.getItem(LS.points)||'0',10); }
-  catch{ return (window.__ecuabulario_mem__?.points)||0; }
+  catch{ return (window.__ecuabulario_mem__?.points) || 0; }
 }
 export function savePoints(v){
   try{ localStorage.setItem(LS.points, String(v)); }
   catch{
-    const mem = (window.__ecuabulario_mem__||(window.__ecuabulario_mem__={points:0,solved:[]}));
+    const mem = (window.__ecuabulario_mem__ ||= {points:0, solved:[]});
     mem.points = v;
   }
 }
 
 export function getSolvedAll(){
   try{ return new Set(JSON.parse(localStorage.getItem(LS.solved_all)||'[]')); }
-  catch{ return new Set(window.__ecuabulario_mem__?.solved||[]); }
+  catch{ return new Set(window.__ecuabulario_mem__?.solved || []); }
 }
 export function addSolvedAll(id){
   try{
     const set = getSolvedAll(); set.add(id);
     localStorage.setItem(LS.solved_all, JSON.stringify([...set]));
   }catch{
-    const mem = (window.__ecuabulario_mem__||(window.__ecuabulario_mem__={points:0,solved:[]}));
+    const mem = (window.__ecuabulario_mem__ ||= {points:0, solved:[]});
     if(!mem.solved.includes(id)) mem.solved.push(id);
   }
 }
@@ -109,5 +110,9 @@ export function addSolvedAll(id){
 export function getProgressAll(){
   const done = getSolvedAll().size;
   const total = ALL_WORDS.length;
-  return {done,total,level:Math.max(1,Math.floor(done/10)+1),ratio:total?done/total:0};
+  return {
+    done, total,
+    level: Math.max(1, Math.floor(done/10)+1),
+    ratio: total ? done/total : 0
+  };
 }
