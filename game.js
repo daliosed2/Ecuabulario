@@ -23,8 +23,11 @@ const EL = {
   goRetry: $('go-retry'),
 };
 
-let points = loadPoints();            // ⭐️ puntos del usuario
-EL.pointsEl.textContent = points;
+// Desplazamiento suave de la tarjeta cuando sube el teclado (requiere .kb-fix en CSS)
+EL.gamecard?.classList.add('kb-fix');
+
+let points = loadPoints();
+if (EL.pointsEl) EL.pointsEl.textContent = points;
 
 // ------- Banco global -------
 const solved = getSolvedAll();
@@ -32,7 +35,7 @@ let queue = ALL_WORDS.filter(x => !solved.has(x.id));
 if (queue.length === 0) queue = [...ALL_WORDS];
 shuffle(queue);
 
-let current = null, answerClean = '', boxes = [];
+let current = null, answerClean = '', boxes = []; // boxes: {el,char,locked,val}
 
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a; }
 const firstEmpty = () => boxes.find(b => !b.locked && !b.val);
@@ -40,19 +43,25 @@ function lastFilled(){ for(let i=boxes.length-1;i>=0;i--) if(boxes[i].val && !bo
 
 function updateHud(){
   const p = getProgressAll();
-  EL.level.textContent = `Nivel ${p.level}`;
-  EL.bar.style.width = (p.ratio * 100) + '%';
-  EL.pointsEl.textContent = points;
+  if (EL.level) EL.level.textContent = `Nivel ${p.level}`;
+  if (EL.bar) EL.bar.style.width = (p.ratio * 100) + '%';
+  if (EL.pointsEl) EL.pointsEl.textContent = points;
   savePoints(points);
 }
 
 function highlightNext(){
   boxes.forEach(b => b.el.classList.remove('focus'));
   const b = firstEmpty();
-  if (b) b.el.classList.add('focus');
+  if (b){
+    b.el.classList.add('focus');
+    // Centra el recuadro activo (útil cuando el teclado tapa parte de la vista)
+    try { b.el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' }); } catch {}
+  }
 }
 
-/* ===== Auto-ajuste sin scroll ===== */
+/* =======================
+   Auto-ajuste sin scroll
+   ======================= */
 const root = document.documentElement;
 const cssNum = (name, fallback)=> {
   const v = getComputedStyle(root).getPropertyValue(name).trim();
@@ -77,18 +86,24 @@ const debounce = (fn, wait=120)=>{
 
 function fitSlots(){
   if(!current) return;
-  setSize(BASE.size); setGaps(BASE.gapL, BASE.gapRow, BASE.gapCol);
 
+  // Reset base para medir
+  setSize(BASE.size);
+  setGaps(BASE.gapL, BASE.gapRow, BASE.gapCol);
+
+  // Tamaño por palabra más larga para entrar en ancho
   const containerW = EL.slots.clientWidth || EL.slots.getBoundingClientRect().width || (window.innerWidth - 40);
   const words = current.a.split(/[\s-]+/).filter(Boolean);
   const longest = words.reduce((m,w)=>Math.max(m,w.length), 1);
   const gapL = cssNum('--gap-letter', BASE.gapL);
 
   let size = Math.floor( (containerW - gapL*(longest-1)) / longest );
-  size = Math.min(size, 80);
-  size = Math.max(size, 26);
+  size = Math.min(size, 80);   // techo
+  size = Math.max(size, 26);   // piso
   setSize(size);
 
+  // Verificar alto disponible y reescalar si hiciera falta
+  // Reserva para pistas y mensaje (~160px)
   let tries = 0;
   while (tries < 4){
     const rect = EL.slots.getBoundingClientRect();
@@ -110,7 +125,9 @@ function fitSlots(){
   }
 }
 
-/* ===== Render palabra ===== */
+/* =======================
+        Render palabra
+   ======================= */
 function newWord(){
   current = queue.shift();
   if (!current) {
@@ -120,13 +137,14 @@ function newWord(){
     current = queue.shift();
   }
 
-  EL.clue.textContent = current.clue;
-  EL.msg.textContent = '';
+  if (EL.clue) EL.clue.textContent = current.clue;
+  if (EL.msg) EL.msg.textContent = '';
   const text = current.a;
   answerClean = norm(text);
   EL.slots.innerHTML = '';
   boxes = [];
 
+  // Agrupar por PALABRAS (sin “slot space”)
   const tokens = text.split(/[\s-]+/).filter(t => t.length);
   tokens.forEach(token => {
     const w = document.createElement('div');
@@ -141,26 +159,63 @@ function newWord(){
   });
 
   highlightNext();
-  requestAnimationFrame(fitSlots);
+  requestAnimationFrame(fitSlots); // ajustar tamaño sin scroll
 }
 
-/* ===== Teclado con centinela (Backspace fiable) ===== */
+/* =======================
+     Teclado / enfoque
+   ======================= */
+// Centinela para que Backspace SIEMPRE funcione en móvil
 const SENTINEL = '•';
 function setTyperSentinel(){
   EL.typer.value = SENTINEL;
   try { EL.typer.setSelectionRange(EL.typer.value.length, EL.typer.value.length); } catch {}
 }
-function focusTyperSync(){
-  try { EL.typer.focus({ preventScroll:true }); setTyperSentinel(); } catch {}
+
+// Altura base y corrección cuando sube el teclado
+let BASE_H = window.innerHeight;
+function kbHeight(){
+  if (window.visualViewport){
+    const vv = window.visualViewport;
+    return Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+  }
+  return Math.max(0, BASE_H - window.innerHeight);
 }
+function applyKbFix(){
+  const h = kbHeight();
+  document.documentElement.style.setProperty('--kb-offset', h + 'px');
+}
+function resetKbFix(){
+  document.documentElement.style.setProperty('--kb-offset', '0px');
+  BASE_H = window.innerHeight;
+}
+
+function focusTyperSync(){
+  try {
+    EL.typer.focus({ preventScroll:true });
+    setTyperSentinel();   // centinela para backspace fiable
+    applyKbFix();         // sube la tarjeta mientras el teclado esté visible
+  } catch {}
+}
+// Abrir teclado SOLO al tocar un recuadro o palabra
 ['click','touchstart'].forEach(evt=>{
   EL.slots.addEventListener(evt, focusTyperSync, { passive:true });
 });
 
-window.addEventListener('resize', debounce(fitSlots, 120));
-window.addEventListener('orientationchange', debounce(fitSlots, 120));
+// Recalcular tamaño y offset al cambiar tamaño/orientación
+window.addEventListener('resize', debounce(()=>{ fitSlots(); applyKbFix(); }, 120));
+window.addEventListener('orientationchange', debounce(()=>{ fitSlots(); applyKbFix(); }, 120));
+// Con visualViewport reaccionamos también a apertura/cierre real del teclado
+;['resize','scroll'].forEach(ev=>{
+  window.visualViewport?.addEventListener(ev, applyKbFix);
+});
+// Cuando el input gana/pierde foco
+document.addEventListener('focusin', applyKbFix);
+document.addEventListener('focusout', ()=>{ resetKbFix(); requestAnimationFrame(fitSlots); });
 
-/* ===== Lógica de juego ===== */
+/* =======================
+        Lógica de juego
+   ======================= */
 function maybeAutoCheck(){
   if (boxes.every(b => b.val || b.locked)) check();
   else highlightNext();
@@ -174,7 +229,7 @@ function backspace(){
   const i = lastFilled(); if (i < 0) return;
   boxes[i].val = '';
   boxes[i].el.textContent = '';
-  EL.msg.textContent = '';
+  if (EL.msg) EL.msg.textContent = '';
   highlightNext();
 }
 function userGuessClean(){ return norm(boxes.map(b => b.val || '').join('')); }
@@ -182,35 +237,37 @@ function userGuessClean(){ return norm(boxes.map(b => b.val || '').join('')); }
 function showGameOver(){
   const figures = ['Eloy Alfaro','Manuela Sáenz','Rumiñahui','Dolores Cacuango','Oswaldo Guayasamín','Eugenio Espejo','Abdón Calderón','José Joaquín de Olmedo'];
   const name = figures[Math.floor(Math.random()*figures.length)];
-  EL.goText.textContent = `Has decepcionado a ${name}`;
-  EL.gameover.style.display = 'flex';
+  if (EL.goText) EL.goText.textContent = `Has decepcionado a ${name}`;
+  if (EL.gameover) EL.gameover.style.display = 'flex';
 }
-EL.goRetry.addEventListener('click', ()=>{
+EL.goRetry?.addEventListener('click', ()=>{
   points = 100; updateHud();
-  EL.gameover.style.display = 'none';
+  if (EL.gameover) EL.gameover.style.display = 'none';
   newWord();
 });
 
 function win(){
   points += 50; updateHud();
-  EL.msg.innerHTML = '<span class="ok">¡Correcto! +50 ⭐️</span>';
+  if (EL.msg) EL.msg.innerHTML = '<span class="ok">¡Correcto! +50 ⭐️</span>';
   EL.gamecard.classList.add('winflash');
   addSolvedAll(current.id);
   setTimeout(()=>{ EL.gamecard.classList.remove('winflash'); newWord(); }, 700);
 }
 function fail(){
   points -= 20; updateHud();
-  EL.msg.innerHTML = '<span class="bad">Incorrecto (-20 ⭐️)</span>';
+  if (EL.msg) EL.msg.innerHTML = '<span class="bad">Incorrecto (-20 ⭐️)</span>';
   if (navigator.vibrate) navigator.vibrate(20);
   if (points <= 0){ showGameOver(); return; }
   autoClear();
 }
 function check(){ (userGuessClean() === answerClean) ? win() : fail(); }
 
-/* ===== Ayudas (solo 2) ===== */
+/* =======================
+           Ayudas
+   ======================= */
 function pay(cost){
   if (points < cost){
-    EL.msg.innerHTML = '<span class="bad">No te alcanzan los puntos.</span>';
+    if (EL.msg) EL.msg.innerHTML = '<span class="bad">No te alcanzan los puntos.</span>';
     return false;
   }
   points -= cost; updateHud(); return true;
@@ -232,17 +289,25 @@ function hintFirst(){
   first.val = first.char.toUpperCase(); first.el.textContent = first.val;
   first.locked = true; first.el.classList.add('lock'); maybeAutoCheck();
 }
-['pointerup','touchend','click'].forEach(e=>{
-  EL.hintLetter.addEventListener(e, hintLetter, {passive:true});
-  EL.hintFirst .addEventListener(e, hintFirst , {passive:true});
+;['pointerup','touchend','click'].forEach(e=>{
+  EL.hintLetter?.addEventListener(e, hintLetter, {passive:true});
+  EL.hintFirst ?.addEventListener(e, hintFirst , {passive:true});
 });
 
-/* ===== Entrada SOLO desde input (con centinela) ===== */
+/* =======================
+  Entrada SOLO desde input
+   ======================= */
+// Anti-doble de algunos teclados
 let lastStamp = 0;
+// Centinela para backspace fiable en móvil
+const SENTINEL = '•';
+
+// Letras: por 'input'. Consumimos todo lo distinto al centinela
 EL.typer.addEventListener('input', (e)=>{
   const now = performance.now();
   if (now - lastStamp < 15) { setTyperSentinel(); return; }
   lastStamp = now;
+
   const v = e.target.value;
   for (let i = 0; i < v.length; i++){
     const ch = v[i].toUpperCase();
@@ -250,15 +315,21 @@ EL.typer.addEventListener('input', (e)=>{
   }
   setTyperSentinel();
 });
+
+// Backspace confiable en iOS/Android
 EL.typer.addEventListener('beforeinput', (e)=>{
   if (e.inputType === 'deleteContentBackward'){
     e.preventDefault(); backspace(); setTyperSentinel();
   }
 });
+
+// Fallback: Enter/Backspace en el propio input
 EL.typer.addEventListener('keydown', (e)=>{
   if(e.key === 'Enter'){ e.preventDefault(); maybeAutoCheck(); }
   if(e.key === 'Backspace'){ e.preventDefault(); backspace(); setTyperSentinel(); }
 });
+
+// Fallback global si el input perdió foco (evita ir atrás con Backspace)
 document.addEventListener('keydown', (e)=>{
   if (document.activeElement === EL.typer) return;
   if (e.key === 'Backspace' || e.key === 'Enter') e.preventDefault();
@@ -266,17 +337,21 @@ document.addEventListener('keydown', (e)=>{
   if (e.key === 'Enter') maybeAutoCheck();
 },{passive:false});
 
-/* ===== Util ===== */
+/* =======================
+           Util
+   ======================= */
 function autoClear(){
   EL.gamecard.classList.add('shake');
   requestAnimationFrame(()=>setTimeout(()=>{
     EL.gamecard.classList.remove('shake');
     boxes.forEach(b => { if(!b.locked){ b.val=''; b.el.textContent=''; } });
-    EL.msg.textContent = '';
+    if (EL.msg) EL.msg.textContent = '';
     highlightNext();
   }, 220));
 }
 
-/* ===== Init ===== */
+/* =======================
+           Init
+   ======================= */
 updateHud();
 newWord();
