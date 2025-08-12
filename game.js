@@ -292,56 +292,93 @@ if (!IS_MOBILE) {
 }
 
 // ---- Móvil: Teclado virtual propio ----
+// ---- Móvil: Teclado virtual adaptativo (iOS/Android) ----
 if (IS_MOBILE) ensureVirtualKeyboard();
 
 function ensureVirtualKeyboard(){
+  // 1) Evitar teclado nativo en móvil
+  if (EL.typer){
+    EL.typer.blur();
+    EL.typer.setAttribute('readonly','true');
+    EL.typer.setAttribute('inputmode','none');
+  }
+
+  // 2) Crear contenedor y estilos (con variables para altura)
   let vk = document.getElementById('vk');
   if (!vk){
     vk = document.createElement('div');
     vk.id = 'vk';
     vk.className = 'vk';
-    const css = `
-      .vk{position:fixed;left:0;right:0;bottom:0;z-index:999;
-          background:#0f172a;padding:8px 10px calc(10px + env(safe-area-inset-bottom));
-          box-shadow:0 -10px 30px rgba(0,0,0,.25)}
-      .vk-row{display:flex;justify-content:center;gap:6px;margin:6px 0}
-      .vk-key{flex:0 0 auto;min-width:40px;height:48px;border-radius:10px;background:#1f2937;
-              color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;
-              user-select:none;-webkit-user-select:none;box-shadow:0 2px 6px rgba(0,0,0,.2)}
-      .vk-key.wide{min-width:72px}
+    const style = document.createElement('style');
+    style.id = 'vk-style';
+    style.textContent = `
+      :root{ --vk-h: min(42svh, 300px); --vk-gap: 8px; }
+      .vk{
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 999;
+        height: var(--vk-h);
+        background: #0f172a;
+        padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+        box-shadow: 0 -12px 30px rgba(0,0,0,.25);
+        display: flex; flex-direction: column; justify-content: flex-end;
+      }
+      .vk-row{ display: grid; gap: var(--vk-gap); margin: 6px 0; padding: 0 8px; }
+      .vk-row.r1, .vk-row.r2{ grid-template-columns: repeat(10, 1fr); }
+      .vk-row.r3{ grid-template-columns: repeat(11, 1fr); } /* para spans */
+      .vk-key{
+        border-radius: 12px; background:#1f2937; color:#fff; font-weight:800;
+        display:grid; place-items:center; user-select:none; -webkit-user-select:none;
+        height: clamp(40px, 10svh, 54px);
+        font-size: clamp(16px, 2.8svh, 20px);
+        box-shadow: 0 2px 6px rgba(0,0,0,.2);
+      }
+      .vk-key[data-span="2"]{ grid-column: span 2; }
+      .vk-key:active{ transform: scale(.98); }
     `;
-    const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
+    document.head.appendChild(style);
     document.body.appendChild(vk);
   }
 
+  // 3) Construir filas (OK y ⌫ ocupan 2 columnas)
   const rows = [
     ['Q','W','E','R','T','Y','U','I','O','P'],
     ['A','S','D','F','G','H','J','K','L','Ñ'],
-    ['Z','X','C','V','B','N','M','⌫','OK']
+    ['Z','X','C','V','B','N','M',{t:'⌫',span:2},{t:'OK',span:2}],
   ];
   vk.innerHTML = '';
-  rows.forEach(r=>{
-    const row = document.createElement('div'); row.className='vk-row';
+  rows.forEach((r, idx)=>{
+    const row = document.createElement('div');
+    row.className = `vk-row r${idx+1}`;
     r.forEach(k=>{
+      const label = typeof k === 'string' ? k : k.t;
+      const span  = typeof k === 'string' ? 1 : (k.span||1);
       const btn = document.createElement('div');
-      btn.className = 'vk-key' + ((k==='⌫'||k==='OK')?' wide':'');
-      btn.textContent = k;
-      // SOLO pointerup -> evita doble evento en Android
-      btn.addEventListener('pointerup', (e)=>{ e.preventDefault(); handleVK(k); }, {passive:false});
+      btn.className = 'vk-key'; if (span>1) btn.dataset.span = String(span);
+      btn.textContent = label;
+      // SOLO pointerup para evitar doble letra en Android/iOS
+      btn.addEventListener('pointerup', (e)=>{ e.preventDefault(); handleVK(label); }, {passive:false});
       row.appendChild(btn);
     });
     vk.appendChild(row);
   });
 
-  // Reservar espacio inferior para que nada quede tras el teclado virtual
-  requestAnimationFrame(()=>{
-    const h = vk.getBoundingClientRect().height;
+  // 4) Calcular ALTURA real con visualViewport y reservar espacio
+  const setVKHeight = ()=>{
+    const vv = window.visualViewport;
+    const base = vv ? vv.height : window.innerHeight;
+    const h = Math.min(Math.max(base * 0.38, 180), 320); // entre 180 y 320 px
+    document.documentElement.style.setProperty('--vk-h', h + 'px');
+
     const wrap = document.querySelector('.wrap');
-    if (wrap){
-      const pb = parseFloat(getComputedStyle(wrap).paddingBottom)||0;
-      wrap.style.paddingBottom = (pb + h) + 'px';
-    }
-  });
+    if (wrap) wrap.style.paddingBottom = `calc(${h}px + env(safe-area-inset-bottom))`;
+  };
+  setVKHeight();
+
+  // Recalcular en cambios de tamaño/orientación
+  const onVV = () => setVKHeight();
+  window.addEventListener('resize', onVV, {passive:true});
+  window.addEventListener('orientationchange', onVV, {passive:true});
+  window.visualViewport?.addEventListener('resize', onVV, {passive:true});
+  window.visualViewport?.addEventListener('scroll', onVV, {passive:true});
 }
 
 function handleVK(k){
