@@ -15,7 +15,7 @@ const EL = {
   slots: $('slots'),
   msg: $('msg'),
   gamecard: $('gamecard'),
-  typer: $('typer'),       // solo desktop
+  typer: $('typer'),        // solo desktop
   hintLetter: $('hint-letter'),
   hintFirst:  $('hint-first'),
   gameover: $('gameover'),
@@ -25,17 +25,20 @@ const EL = {
 
 EL.gamecard?.classList.add('kb-fix');
 
-let points = loadPoints();
-EL.pointsEl && (EL.pointsEl.textContent = points);
-
-/* ===== Detección robusta de móvil/touch ===== */
+/* ===== detección robusta de móvil ===== */
 const IS_TOUCH   = (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window || 'ontouchstart' in document.documentElement;
 const IS_PRECISE = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-const IS_MOBILE  = IS_TOUCH && !IS_PRECISE; // teléfonos/tablets incluso con “sitio de escritorio”
+const IS_MOBILE  = IS_TOUCH && !IS_PRECISE;
 
-/* ===== Banco y estado ===== */
-const solved = getSolvedAll();
-let queue = ALL_WORDS.filter(x => !solved.has(x.id));
+/* ===== persistencia de palabra actual ===== */
+const LS_CURRENT = 'ecuabulario_current_id';
+
+let points = loadPoints();
+if (EL.pointsEl) EL.pointsEl.textContent = points;
+
+/* ===== banco y estado ===== */
+const solvedSet = getSolvedAll();
+let queue = ALL_WORDS.filter(x => !solvedSet.has(x.id));
 if (queue.length === 0) queue = [...ALL_WORDS];
 shuffle(queue);
 
@@ -47,9 +50,9 @@ function lastFilled(){ for(let i=boxes.length-1;i>=0;i--) if(boxes[i].val && !bo
 
 function updateHud(){
   const p = getProgressAll();
-  EL.level && (EL.level.textContent = `Nivel ${p.level}`);
-  EL.bar && (EL.bar.style.width = (p.ratio * 100) + '%');
-  EL.pointsEl && (EL.pointsEl.textContent = points);
+  if (EL.level) EL.level.textContent = `Nivel ${p.level}`;
+  if (EL.bar) EL.bar.style.width = (p.ratio * 100) + '%';
+  if (EL.pointsEl) EL.pointsEl.textContent = points;
   savePoints(points);
 }
 
@@ -77,6 +80,11 @@ const BASE = {
   gapRow:cssNum('--gap-word-row', 14),
   gapCol:cssNum('--gap-word-col', 18),
 };
+const cssVarPx = (name)=> {
+  const v = getComputedStyle(root).getPropertyValue(name).trim();
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : 0;
+};
 const setSize = (px)=> root.style.setProperty('--slot-size', px+'px');
 const setGaps = (l,r,c)=>{
   root.style.setProperty('--gap-letter', l+'px');
@@ -101,13 +109,18 @@ function fitSlots(){
   let size = Math.floor( (containerW - gapL*(longest-1)) / longest );
   size = Math.min(size, 80);
   size = Math.max(size, 26);
+
+  // Palabras MUY largas (p.ej., "Encebollado"): permite 2 filas y evita que el slot sea diminuto
+  if (longest >= 11 && size < 26) {
+    size = 26;
+  }
   setSize(size);
 
-  // Reserva mayor si hay teclado virtual
+  // Ajuste por altura disponible (reserva extra si hay teclado virtual)
   let tries = 0;
   while (tries < 4){
     const rect = EL.slots.getBoundingClientRect();
-    const reserve = IS_MOBILE ? 220 : 160;
+    const reserve = IS_MOBILE ? Math.max(180, cssVarPx('--vk-h') + 40) : 160;
     const availH = Math.max(120, window.innerHeight - rect.top - reserve);
     const needH  = EL.slots.scrollHeight;
     if (needH <= availH) break;
@@ -129,21 +142,37 @@ function fitSlots(){
         Render palabra
    ======================= */
 function newWord(){
-  current = queue.shift();
-  if (!current) {
-    queue = ALL_WORDS.filter(x => !getSolvedAll().has(x.id));
-    if (queue.length === 0) queue = [...ALL_WORDS];
-    shuffle(queue);
-    current = queue.shift();
+  // 1) Si hay palabra pendiente y no está resuelta, úsala
+  const savedId = localStorage.getItem(LS_CURRENT);
+  if (savedId) {
+    const alreadySolved = getSolvedAll().has(savedId);
+    const found = ALL_WORDS.find(w => w.id === savedId);
+    if (!alreadySolved && found) current = found;
   }
 
-  EL.clue && (EL.clue.textContent = current.clue);
-  EL.msg && (EL.msg.textContent = '');
+  // 2) Si no había pendiente, toma de la cola
+  if (!current) {
+    current = queue.shift();
+    if (!current) {
+      queue = ALL_WORDS.filter(x => !getSolvedAll().has(x.id));
+      if (queue.length === 0) queue = [...ALL_WORDS];
+      shuffle(queue);
+      current = queue.shift();
+    }
+  }
+
+  // Guardar como pendiente hasta acertar
+  localStorage.setItem(LS_CURRENT, current.id);
+
+  // Render
+  if (EL.clue) EL.clue.textContent = current.clue;
+  if (EL.msg) EL.msg.textContent = '';
   const text = current.a;
   answerClean = norm(text);
   EL.slots.innerHTML = '';
   boxes = [];
 
+  // Agrupar por PALABRAS; CSS de .word ahora permite wrap en 2 filas
   const tokens = text.split(/[\s-]+/).filter(t => t.length);
   tokens.forEach(token => {
     const w = document.createElement('div');
@@ -192,7 +221,10 @@ EL.goRetry?.addEventListener('pointerup', (e)=>{
   e.preventDefault();
   points = 100; updateHud();
   EL.gameover && (EL.gameover.style.display = 'none');
-  newWord();
+  // limpiar casillas, mantener palabra
+  boxes.forEach(b => { if(!b.locked){ b.val=''; b.el.textContent=''; } });
+  EL.msg && (EL.msg.textContent = '');
+  highlightNext();
 }, {passive:false});
 
 function win(){
@@ -200,7 +232,12 @@ function win(){
   EL.msg && (EL.msg.innerHTML = '<span class="ok">¡Correcto! +50 ⭐️</span>');
   EL.gamecard.classList.add('winflash');
   addSolvedAll(current.id);
-  setTimeout(()=>{ EL.gamecard.classList.remove('winflash'); newWord(); }, 700);
+  localStorage.removeItem(LS_CURRENT); // ya no está pendiente
+  setTimeout(()=>{
+    EL.gamecard.classList.remove('winflash');
+    current = null;      // fuerza elegir nueva
+    newWord();
+  }, 700);
 }
 function fail(){
   points -= 20; updateHud();
@@ -223,7 +260,7 @@ function pay(cost){
 }
 function hintLetter(){
   if(!boxes.length) return;
-  if(!pay(35)) return;
+  if(!pay(35)) return; // ⭐️35
   const cs = boxes.filter(b => !b.locked && !b.val);
   if(!cs.length){ maybeAutoCheck(); return; }
   const pick = cs[Math.floor(Math.random()*cs.length)];
@@ -232,7 +269,7 @@ function hintLetter(){
 }
 function hintFirst(){
   if(!boxes.length) return;
-  if(!pay(50)) return;
+  if(!pay(50)) return; // ⭐️50
   const first = boxes.find(b => !b.locked);
   if(!first){ maybeAutoCheck(); return; }
   first.val = first.char.toUpperCase(); first.el.textContent = first.val;
@@ -246,7 +283,7 @@ function hintFirst(){
 /* =========================================================
    ENTRADA DE TEXTO
    - Desktop: input oculto + teclado físico
-   - Móvil:  teclado virtual (sin abrir el nativo)
+   - Móvil:  teclado virtual adaptativo (sin teclado nativo)
    ========================================================= */
 
 // ---- Desktop / hardware keyboard ----
@@ -261,9 +298,7 @@ if (!IS_MOBILE) {
   function focusTyperSync(){
     try { EL.typer.focus({ preventScroll:true }); setTyperSentinel(); } catch {}
   }
-  ['pointerup'].forEach(evt=>{
-    EL.slots.addEventListener(evt, (e)=>{ e.preventDefault(); focusTyperSync(); }, { passive:false });
-  });
+  EL.slots.addEventListener('pointerup', (e)=>{ e.preventDefault(); focusTyperSync(); }, { passive:false });
 
   EL.typer.addEventListener('input', (e)=>{
     const now = performance.now();
@@ -291,19 +326,17 @@ if (!IS_MOBILE) {
   }, {passive:false});
 }
 
-// ---- Móvil: Teclado virtual propio ----
-// ---- Móvil: Teclado virtual adaptativo (iOS/Android) ----
+// ---- Móvil: teclado virtual adaptativo ----
 if (IS_MOBILE) ensureVirtualKeyboard();
 
 function ensureVirtualKeyboard(){
-  // 1) Evitar teclado nativo en móvil
+  // Evitar teclado nativo
   if (EL.typer){
     EL.typer.blur();
     EL.typer.setAttribute('readonly','true');
     EL.typer.setAttribute('inputmode','none');
   }
 
-  // 2) Crear contenedor y estilos (con variables para altura)
   let vk = document.getElementById('vk');
   if (!vk){
     vk = document.createElement('div');
@@ -311,85 +344,76 @@ function ensureVirtualKeyboard(){
     vk.className = 'vk';
     const style = document.createElement('style');
     style.id = 'vk-style';
-  style.textContent = `
-  :root{ --vk-h: clamp(180px, 38svh, 300px); --vk-gap: clamp(4px, 1.8vw, 8px); }
-  .vk{
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 999;
-    height: var(--vk-h);
-    background: #0f172a;
-    padding: 8px clamp(8px, 3vw, 12px) calc(10px + env(safe-area-inset-bottom));
-    box-shadow: 0 -12px 30px rgba(0,0,0,.25);
-    display: flex; flex-direction: column; justify-content: flex-end;
-    max-width: 100vw; overflow: hidden;
-  }
-  .vk-row{
-    display: grid;
-    gap: var(--vk-gap);
-    margin: clamp(2px, 0.8vh, 6px) 0;
-    padding: 0 clamp(4px, 2vw, 10px);
-  }
-  /* 10 columnas para R1 y R2, 9 para R3 (más compacta) */
-  .vk-row.r1, .vk-row.r2{ grid-template-columns: repeat(10, minmax(0, 1fr)); }
-  .vk-row.r3{ grid-template-columns: repeat(9,  minmax(0, 1fr)); }
-
-  .vk-key{
-    border-radius: 12px;
-    background:#1f2937; color:#fff; font-weight:800;
-    display:grid; place-items:center;
-    user-select:none; -webkit-user-select:none;
-    min-width: 0;                 /* permite encoger en pantallas estrechas */
-    height: clamp(40px, 9svh, 52px);
-    font-size: clamp(14px, 2.6svh, 18px);
-    padding: 0 clamp(2px, 1vw, 4px);
-    box-shadow: 0 2px 6px rgba(0,0,0,.2);
-  }
-  .vk-key:active{ transform: scale(.98); }
-`;
+    style.textContent = `
+      :root{ --vk-h: clamp(180px, 38svh, 300px); --vk-gap: clamp(4px, 1.8vw, 8px); }
+      .vk{
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 999;
+        height: var(--vk-h);
+        background: #0f172a;
+        padding: 8px clamp(8px, 3vw, 12px) calc(10px + env(safe-area-inset-bottom));
+        box-shadow: 0 -12px 30px rgba(0,0,0,.25);
+        display: flex; flex-direction: column; justify-content: flex-end;
+        max-width: 100vw; overflow: hidden;
+      }
+      .vk-row{
+        display: grid;
+        gap: var(--vk-gap);
+        margin: clamp(2px, 0.8vh, 6px) 0;
+        padding: 0 clamp(4px, 2vw, 10px);
+      }
+      .vk-row.r1, .vk-row.r2{ grid-template-columns: repeat(10, minmax(0, 1fr)); }
+      .vk-row.r3{ grid-template-columns: repeat(9,  minmax(0, 1fr)); }
+      .vk-key{
+        border-radius: 12px;
+        background:#1f2937; color:#fff; font-weight:800;
+        display:grid; place-items:center;
+        user-select:none; -webkit-user-select:none;
+        min-width: 0;
+        height: clamp(40px, 9svh, 52px);
+        font-size: clamp(14px, 2.6svh, 18px);
+        padding: 0 clamp(2px, 1vw, 4px);
+        box-shadow: 0 2px 6px rgba(0,0,0,.2);
+      }
+      .vk-key:active{ transform: scale(.98); }
+    `;
     document.head.appendChild(style);
     document.body.appendChild(vk);
   }
 
-  // 3) Construir filas (OK y ⌫ ocupan 2 columnas)
-const rows = [
-  ['Q','W','E','R','T','Y','U','I','O','P'],      // 10
-  ['A','S','D','F','G','H','J','K','L','Ñ'],      // 10
-  ['Z','X','C','V','B','N','M','⌫','OK']         // 9 (más compacta)
-];
+  const rows = [
+    ['Q','W','E','R','T','Y','U','I','O','P'],   // 10
+    ['A','S','D','F','G','H','J','K','L','Ñ'],   // 10
+    ['Z','X','C','V','B','N','M','⌫','OK']      // 9 (compacta)
+  ];
   vk.innerHTML = '';
   rows.forEach((r, idx)=>{
     const row = document.createElement('div');
     row.className = `vk-row r${idx+1}`;
-    r.forEach(k=>{
-      const label = typeof k === 'string' ? k : k.t;
-      const span  = typeof k === 'string' ? 1 : (k.span||1);
+    r.forEach(label=>{
       const btn = document.createElement('div');
-      btn.className = 'vk-key'; if (span>1) btn.dataset.span = String(span);
+      btn.className = 'vk-key';
       btn.textContent = label;
-      // SOLO pointerup para evitar doble letra en Android/iOS
       btn.addEventListener('pointerup', (e)=>{ e.preventDefault(); handleVK(label); }, {passive:false});
       row.appendChild(btn);
     });
     vk.appendChild(row);
   });
 
-  // 4) Calcular ALTURA real con visualViewport y reservar espacio
   const setVKHeight = ()=>{
     const vv = window.visualViewport;
     const base = vv ? vv.height : window.innerHeight;
-    const h = Math.min(Math.max(base * 0.38, 180), 320); // entre 180 y 320 px
-    document.documentElement.style.setProperty('--vk-h', h + 'px');
-
+    const h = Math.min(Math.max(base * 0.38, 180), 300); // 180–300px
+    root.style.setProperty('--vk-h', h + 'px');
     const wrap = document.querySelector('.wrap');
     if (wrap) wrap.style.paddingBottom = `calc(${h}px + env(safe-area-inset-bottom))`;
+    requestAnimationFrame(fitSlots);
   };
   setVKHeight();
 
-  // Recalcular en cambios de tamaño/orientación
-  const onVV = () => setVKHeight();
-  window.addEventListener('resize', onVV, {passive:true});
-  window.addEventListener('orientationchange', onVV, {passive:true});
-  window.visualViewport?.addEventListener('resize', onVV, {passive:true});
-  window.visualViewport?.addEventListener('scroll', onVV, {passive:true});
+  window.addEventListener('resize', setVKHeight, {passive:true});
+  window.addEventListener('orientationchange', setVKHeight, {passive:true});
+  window.visualViewport?.addEventListener('resize', setVKHeight, {passive:true});
+  window.visualViewport?.addEventListener('scroll', setVKHeight, {passive:true});
 }
 
 function handleVK(k){
