@@ -311,39 +311,50 @@ function ensureVirtualKeyboard(){
     vk.className = 'vk';
     const style = document.createElement('style');
     style.id = 'vk-style';
-    style.textContent = `
-      :root{ --vk-h: min(42svh, 300px); --vk-gap: 8px; }
-      .vk{
-        position: fixed; left: 0; right: 0; bottom: 0; z-index: 999;
-        height: var(--vk-h);
-        background: #0f172a;
-        padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
-        box-shadow: 0 -12px 30px rgba(0,0,0,.25);
-        display: flex; flex-direction: column; justify-content: flex-end;
-      }
-      .vk-row{ display: grid; gap: var(--vk-gap); margin: 6px 0; padding: 0 8px; }
-      .vk-row.r1, .vk-row.r2{ grid-template-columns: repeat(10, 1fr); }
-      .vk-row.r3{ grid-template-columns: repeat(11, 1fr); } /* para spans */
-      .vk-key{
-        border-radius: 12px; background:#1f2937; color:#fff; font-weight:800;
-        display:grid; place-items:center; user-select:none; -webkit-user-select:none;
-        height: clamp(40px, 10svh, 54px);
-        font-size: clamp(16px, 2.8svh, 20px);
-        box-shadow: 0 2px 6px rgba(0,0,0,.2);
-      }
-      .vk-key[data-span="2"]{ grid-column: span 2; }
-      .vk-key:active{ transform: scale(.98); }
-    `;
+  style.textContent = `
+  :root{ --vk-h: clamp(180px, 38svh, 300px); --vk-gap: clamp(4px, 1.8vw, 8px); }
+  .vk{
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 999;
+    height: var(--vk-h);
+    background: #0f172a;
+    padding: 8px clamp(8px, 3vw, 12px) calc(10px + env(safe-area-inset-bottom));
+    box-shadow: 0 -12px 30px rgba(0,0,0,.25);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    max-width: 100vw; overflow: hidden;
+  }
+  .vk-row{
+    display: grid;
+    gap: var(--vk-gap);
+    margin: clamp(2px, 0.8vh, 6px) 0;
+    padding: 0 clamp(4px, 2vw, 10px);
+  }
+  /* 10 columnas para R1 y R2, 9 para R3 (más compacta) */
+  .vk-row.r1, .vk-row.r2{ grid-template-columns: repeat(10, minmax(0, 1fr)); }
+  .vk-row.r3{ grid-template-columns: repeat(9,  minmax(0, 1fr)); }
+
+  .vk-key{
+    border-radius: 12px;
+    background:#1f2937; color:#fff; font-weight:800;
+    display:grid; place-items:center;
+    user-select:none; -webkit-user-select:none;
+    min-width: 0;                 /* permite encoger en pantallas estrechas */
+    height: clamp(40px, 9svh, 52px);
+    font-size: clamp(14px, 2.6svh, 18px);
+    padding: 0 clamp(2px, 1vw, 4px);
+    box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  }
+  .vk-key:active{ transform: scale(.98); }
+`;
     document.head.appendChild(style);
     document.body.appendChild(vk);
   }
 
   // 3) Construir filas (OK y ⌫ ocupan 2 columnas)
-  const rows = [
-    ['Q','W','E','R','T','Y','U','I','O','P'],
-    ['A','S','D','F','G','H','J','K','L','Ñ'],
-    ['Z','X','C','V','B','N','M',{t:'⌫',span:2},{t:'OK',span:2}],
-  ];
+const rows = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],      // 10
+  ['A','S','D','F','G','H','J','K','L','Ñ'],      // 10
+  ['Z','X','C','V','B','N','M','⌫','OK']         // 9 (más compacta)
+];
   vk.innerHTML = '';
   rows.forEach((r, idx)=>{
     const row = document.createElement('div');
