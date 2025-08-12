@@ -58,7 +58,7 @@ export const ALL_WORDS = [
   { id:'galapagos', a:'Galápagos', clue:'Islas famosas por su biodiversidad' },
   { id:'cuenca', a:'Cuenca', clue:'Ciudad patrimonial del Azuay' },
   { id:'quilotoa', a:'Quilotoa', clue:'Laguna en cráter volcánico' },
-  { id:'basilica', a:'Basílica del Voto Nacional', clue:'Iglesia gótica icónica en Quito' },
+  { id:'basilica', a:'Basílica', clue:'Iglesia gótica icónica en Quito' },
   { id:'banos', a:'Baños', clue:'Cascadas y termas, aventura' },
   { id:'mindo', a:'Mindo', clue:'Aves y naturaleza' },
   { id:'otavalo', a:'Otavalo', clue:'Mercado artesanal famoso' },
