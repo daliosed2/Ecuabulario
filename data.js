@@ -67,27 +67,31 @@ export const ALL_WORDS = [
 
 // --- Storage global (sin categorías) ---
 const LS = {
-  coins: 'ecuabulario_coins',
-  solved_all: 'ecuabulario_solved_all'
+  points: 'ecuabulario_points',           // PUNTOS del usuario
+  solved_all: 'ecuabulario_solved_all'    // Palabras resueltas
 };
 
 export function ensureInit(){
   try{
-    if(localStorage.getItem(LS.coins)===null) localStorage.setItem(LS.coins,'200');
+    if(localStorage.getItem(LS.points)===null) localStorage.setItem(LS.points,'100');  // inicia con 100
     if(localStorage.getItem(LS.solved_all)===null) localStorage.setItem(LS.solved_all,'[]');
   }catch(e){
-    // Fallback en caso de bloqueo de storage
-    window.__ecuabulario_mem__ = window.__ecuabulario_mem__ || {coins:200, solved:[]};
+    window.__ecuabulario_mem__ = window.__ecuabulario_mem__ || {points:100, solved:[]};
   }
 }
-export function loadCoins(){
-  try{ return parseInt(localStorage.getItem(LS.coins)||'0',10); }
-  catch{ return (window.__ecuabulario_mem__?.coins)||0; }
+
+export function loadPoints(){
+  try{ return parseInt(localStorage.getItem(LS.points)||'0',10); }
+  catch{ return (window.__ecuabulario_mem__?.points)||0; }
 }
-export function saveCoins(v){
-  try{ localStorage.setItem(LS.coins, String(v)); }
-  catch{ (window.__ecuabulario_mem__||(window.__ecuabulario_mem__={coins:0,solved:[]})).coins=v; }
+export function savePoints(v){
+  try{ localStorage.setItem(LS.points, String(v)); }
+  catch{
+    const mem = (window.__ecuabulario_mem__||(window.__ecuabulario_mem__={points:0,solved:[]}));
+    mem.points = v;
+  }
 }
+
 export function getSolvedAll(){
   try{ return new Set(JSON.parse(localStorage.getItem(LS.solved_all)||'[]')); }
   catch{ return new Set(window.__ecuabulario_mem__?.solved||[]); }
@@ -97,10 +101,11 @@ export function addSolvedAll(id){
     const set = getSolvedAll(); set.add(id);
     localStorage.setItem(LS.solved_all, JSON.stringify([...set]));
   }catch{
-    const mem = (window.__ecuabulario_mem__||(window.__ecuabulario_mem__={coins:0,solved:[]}));
+    const mem = (window.__ecuabulario_mem__||(window.__ecuabulario_mem__={points:0,solved:[]}));
     if(!mem.solved.includes(id)) mem.solved.push(id);
   }
 }
+
 export function getProgressAll(){
   const done = getSolvedAll().size;
   const total = ALL_WORDS.length;
