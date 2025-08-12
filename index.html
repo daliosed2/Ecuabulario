@@ -32,13 +32,20 @@
   </div>
 
   <script type="module">
-    import { ensureInit, loadCoins, getProgressAll, ALL_WORDS } from './data.js';
-    try { ensureInit(); } catch {}
-    document.getElementById('coins').textContent = loadCoins();
-    const p = getProgressAll();
-    document.getElementById('done').textContent = p.done;
-    document.getElementById('total').textContent = ALL_WORDS.length;
-    document.getElementById('bar').style.width = (p.ratio * 100) + '%';
-  </script>
+  import { ensureInit, loadPoints, getProgressAll, ALL_WORDS } from './data.js';
+  try { ensureInit(); } catch {}
+  document.getElementById('coins')?.replaceWith((()=>{
+    const div=document.createElement('div');
+    div.className='coins';
+    div.innerHTML='⭐️ <span id="points">0</span>';
+    return div;
+  })());
+  document.getElementById('points').textContent = loadPoints();
+
+  const p = getProgressAll();
+  document.getElementById('done').textContent = p.done;
+  document.getElementById('total').textContent = ALL_WORDS.length;
+  document.getElementById('bar').style.width = (p.ratio * 100) + '%';
+</script>
 </body>
 </html>
