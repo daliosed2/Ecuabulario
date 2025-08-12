@@ -15,7 +15,7 @@ const EL = {
   slots: $('slots'),
   msg: $('msg'),
   gamecard: $('gamecard'),
-  typer: $('typer'),
+  typer: $('typer'),       // seguirá para desktop; en móvil NO se usa
   hintLetter: $('hint-letter'),
   hintFirst:  $('hint-first'),
   gameover: $('gameover'),
@@ -23,11 +23,14 @@ const EL = {
   goRetry:  $('go-retry'),
 };
 
-// Mover la tarjeta cuando sube el teclado (clase definida en CSS)
 EL.gamecard?.classList.add('kb-fix');
 
 let points = loadPoints();
 EL.pointsEl && (EL.pointsEl.textContent = points);
+
+// ===== Detectar móvil (coarse pointer + userAgent) =====
+const IS_MOBILE = (window.matchMedia?.('(pointer: coarse)').matches ?? false)
+  || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 // ------- Banco global -------
 const solved = getSolvedAll();
@@ -102,7 +105,7 @@ function fitSlots(){
   let tries = 0;
   while (tries < 4){
     const rect = EL.slots.getBoundingClientRect();
-    const reserve = 160; // espacio para pistas+mensaje
+    const reserve = IS_MOBILE ? 220 : 160; // en móvil dejamos más espacio para el teclado virtual
     const availH = Math.max(120, window.innerHeight - rect.top - reserve);
     const needH  = EL.slots.scrollHeight;
     if (needH <= availH) break;
@@ -155,58 +158,6 @@ function newWord(){
   highlightNext();
   requestAnimationFrame(fitSlots);
 }
-
-/* =======================
-     Teclado / enfoque
-   ======================= */
-// Declaración ÚNICA del centinela (arregla tu error)
-const SENTINEL = '•';
-
-function setTyperSentinel(){
-  EL.typer.value = SENTINEL;
-  try { EL.typer.setSelectionRange(EL.typer.value.length, EL.typer.value.length); } catch {}
-}
-
-// Altura base y corrección cuando sube el teclado
-let BASE_H = window.innerHeight;
-function kbHeight(){
-  if (window.visualViewport){
-    const vv = window.visualViewport;
-    return Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
-  }
-  return Math.max(0, BASE_H - window.innerHeight);
-}
-function applyKbFix(){
-  const h = kbHeight();
-  document.documentElement.style.setProperty('--kb-offset', h + 'px');
-}
-function resetKbFix(){
-  document.documentElement.style.setProperty('--kb-offset', '0px');
-  BASE_H = window.innerHeight;
-}
-
-function focusTyperSync(){
-  try {
-    EL.typer.focus({ preventScroll:true });
-    setTyperSentinel();   // backspace fiable
-    applyKbFix();         // sube la tarjeta mientras el teclado esté visible
-  } catch {}
-}
-// Abrir teclado SOLO al tocar un recuadro o palabra
-;['click','touchstart'].forEach(evt=>{
-  EL.slots.addEventListener(evt, focusTyperSync, { passive:true });
-});
-
-// Recalcular tamaño y offset al cambiar tamaño/orientación
-window.addEventListener('resize', debounce(()=>{ fitSlots(); applyKbFix(); }, 120));
-window.addEventListener('orientationchange', debounce(()=>{ fitSlots(); applyKbFix(); }, 120));
-// Con visualViewport reaccionamos también a apertura/cierre real del teclado
-;['resize','scroll'].forEach(ev=>{
-  window.visualViewport?.addEventListener(ev, applyKbFix);
-});
-// Cuando el input gana/pierde foco
-document.addEventListener('focusin', applyKbFix);
-document.addEventListener('focusout', ()=>{ resetKbFix(); requestAnimationFrame(fitSlots); });
 
 /* =======================
         Lógica de juego
@@ -289,46 +240,125 @@ function hintFirst(){
   EL.hintFirst ?.addEventListener(e, hintFirst , {passive:true});
 });
 
-/* =======================
-  Entrada SOLO desde input
-   ======================= */
-// Anti-doble de algunos teclados
-let lastStamp = 0;
+/* =========================================================
+   ENTRADA DE TEXTO
+   - Desktop: input oculto (centinela) + teclado físico
+   - Móvil:  teclado virtual (sin abrir el nativo)
+   ========================================================= */
 
-// Letras: por 'input'. Consumimos todo lo distinto al centinela
-EL.typer.addEventListener('input', (e)=>{
-  const now = performance.now();
-  if (now - lastStamp < 15) { setTyperSentinel(); return; }
-  lastStamp = now;
+// ---- Desktop / hardware keyboard ----
+if (!IS_MOBILE) {
+  const SENTINEL = '•';
+  let lastStamp = 0;
 
-  const v = e.target.value;
-  for (let i = 0; i < v.length; i++){
-    const ch = v[i].toUpperCase();
-    if (ch !== SENTINEL && /^[A-ZÑ]$/.test(ch)) typeLetter(ch);
+  function setTyperSentinel(){
+    EL.typer.value = SENTINEL;
+    try { EL.typer.setSelectionRange(EL.typer.value.length, EL.typer.value.length); } catch {}
   }
-  setTyperSentinel();
-});
-
-// Backspace confiable en iOS/Android
-EL.typer.addEventListener('beforeinput', (e)=>{
-  if (e.inputType === 'deleteContentBackward'){
-    e.preventDefault(); backspace(); setTyperSentinel();
+  function focusTyperSync(){
+    try { EL.typer.focus({ preventScroll:true }); setTyperSentinel(); } catch {}
   }
-});
+  // Abrir teclado SOLO al tocar slots (en desktop no molesta)
+  ['click','touchstart'].forEach(evt=>{
+    EL.slots.addEventListener(evt, focusTyperSync, { passive:true });
+  });
 
-// Fallback: Enter/Backspace en el propio input
-EL.typer.addEventListener('keydown', (e)=>{
-  if(e.key === 'Enter'){ e.preventDefault(); maybeAutoCheck(); }
-  if(e.key === 'Backspace'){ e.preventDefault(); backspace(); setTyperSentinel(); }
-});
+  // Letras: por 'input'
+  EL.typer.addEventListener('input', (e)=>{
+    const now = performance.now();
+    if (now - lastStamp < 15) { setTyperSentinel(); return; }
+    lastStamp = now;
+    const v = e.target.value;
+    for (let i = 0; i < v.length; i++){
+      const ch = v[i].toUpperCase();
+      if (ch !== SENTINEL && /^[A-ZÑ]$/.test(ch)) typeLetter(ch);
+    }
+    setTyperSentinel();
+  });
+  // Backspace/Enter
+  EL.typer.addEventListener('beforeinput', (e)=>{
+    if (e.inputType === 'deleteContentBackward'){ e.preventDefault(); backspace(); setTyperSentinel(); }
+  });
+  EL.typer.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); maybeAutoCheck(); }
+    if(e.key === 'Backspace'){ e.preventDefault(); backspace(); setTyperSentinel(); }
+  });
+  document.addEventListener('keydown', (e)=>{
+    if (document.activeElement === EL.typer) return;
+    if (e.key === 'Backspace' || e.key === 'Enter') e.preventDefault();
+    if (e.key === 'Backspace') backspace();
+    if (e.key === 'Enter') maybeAutoCheck();
+  }, {passive:false});
+}
 
-// Fallback global si el input perdió foco (evita ir atrás con Backspace)
-document.addEventListener('keydown', (e)=>{
-  if (document.activeElement === EL.typer) return;
-  if (e.key === 'Backspace' || e.key === 'Enter') e.preventDefault();
-  if (e.key === 'Backspace') backspace();
-  if (e.key === 'Enter') maybeAutoCheck();
-},{passive:false});
+// ---- Móvil: Teclado virtual propio ----
+if (IS_MOBILE) {
+  buildVirtualKeyboard();
+}
+
+// Construye teclado virtual y registra handlers
+function buildVirtualKeyboard(){
+  let vk = document.getElementById('vk');
+  if (!vk){
+    vk = document.createElement('div');
+    vk.id = 'vk';
+    vk.className = 'vk';
+    // Estilos mínimos inyectados para que funcione aunque no hayas pegado el CSS
+    const css = `
+      .vk{position:fixed;left:0;right:0;bottom:0;z-index:999;
+          background:#0f172a;padding:8px 10px calc(10px + env(safe-area-inset-bottom));
+          box-shadow:0 -10px 30px rgba(0,0,0,.25)}
+      .vk-row{display:flex;justify-content:center;gap:6px;margin:6px 0}
+      .vk-key{flex:0 0 auto;min-width:36px;height:44px;border-radius:10px;background:#1f2937;
+              color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;
+              user-select:none;-webkit-user-select:none;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+      .vk-key.wide{min-width:64px}
+    `;
+    const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
+    document.body.appendChild(vk);
+  }
+
+  const rows = [
+    ['Q','W','E','R','T','Y','U','I','O','P'],
+    ['A','S','D','F','G','H','J','K','L','Ñ'],
+    ['Z','X','C','V','B','N','M','⌫','OK']
+  ];
+  vk.innerHTML = '';
+  rows.forEach(r=>{
+    const row = document.createElement('div'); row.className='vk-row';
+    r.forEach(k=>{
+      const btn = document.createElement('div');
+      btn.className = 'vk-key' + ((k==='⌫'||k==='OK')?' wide':'');
+      btn.textContent = k;
+      btn.addEventListener('click', ()=> handleVK(k), {passive:true});
+      btn.addEventListener('touchend', ()=> handleVK(k), {passive:true});
+      row.appendChild(btn);
+    });
+    vk.appendChild(row);
+  });
+
+  // Reservar espacio inferior para que nada quede oculto tras el teclado virtual
+  requestAnimationFrame(()=>{
+    const h = vk.getBoundingClientRect().height;
+    root.style.setProperty('--vk-h', h + 'px');
+    // Añade padding-bottom a .wrap si tu CSS lo usa; si no, no pasa nada
+    const wrap = document.querySelector('.wrap');
+    if (wrap){
+      const pb = parseFloat(getComputedStyle(wrap).paddingBottom)||0;
+      wrap.style.paddingBottom = (pb + h) + 'px';
+    }
+  });
+
+  // Evitar que cualquier input abra el teclado nativo en móvil
+  if (EL.typer){ EL.typer.blur(); }
+  // No registramos focusTyperSync en móvil → nunca se abre el teclado nativo
+}
+
+function handleVK(k){
+  if (k === '⌫') { backspace(); return; }
+  if (k === 'OK') { maybeAutoCheck(); return; }
+  if (/^[A-ZÑ]$/.test(k)) typeLetter(k);
+}
 
 /* =======================
            Util
@@ -348,3 +378,7 @@ function autoClear(){
    ======================= */
 updateHud();
 newWord();
+
+// Ajustes en cambios de tamaño/orientación (recalcula slots)
+window.addEventListener('resize', debounce(fitSlots, 120));
+window.addEventListener('orientationchange', debounce(fitSlots, 120));
