@@ -65,7 +65,14 @@ html,body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sa
   justify-content:center;
   margin:16px 0 18px;
 }
-.word{ display:flex; gap: var(--gap-letter); }
+.word{
+  display:flex;
+  gap: var(--gap-letter);
+  flex-wrap: wrap;        /* ← permite que una palabra larga se parta en 2 líneas */
+  max-width: 100%;
+  justify-content: center;
+  row-gap: calc(var(--gap-letter) * 0.6); /* espacio vertical cuando se parte */
+}
 
 .slot{
   width: var(--slot-size);
