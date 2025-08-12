@@ -6,6 +6,12 @@
   <meta name="theme-color" content="#ffd166" />
   <title>Ecuabulario – Juego</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Overlay Game Over */
+    .gameover{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:16px;z-index:1000}
+    .gameover .panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;max-width:460px;text-align:center}
+    .gameover .panel h3{margin:0 0 8px}
+  </style>
 </head>
 <body class="bg-yellow">
   <div class="wrap">
@@ -15,8 +21,8 @@
         <span id="level">Nivel 1</span>
         <div class="progress small"><div id="bar" class="bar"></div></div>
       </div>
-      <div class="hud" aria-label="Monedas">
-        <div class="coins">🪙 <span id="coins">0</span></div>
+      <div class="hud" aria-label="Puntos">
+        <div class="coins">⭐️ <span id="points">0</span></div>
       </div>
     </header>
 
@@ -25,31 +31,27 @@
       <div id="slots" class="slots" role="group" aria-label="Casillas de la respuesta"></div>
 
       <div class="hints" id="hints" role="group" aria-label="Ayudas">
-        <button id="hint-letter" class="pill" aria-label="Revelar una letra">Revelar letra (🪙15)</button>
-        <button id="hint-first"  class="pill" aria-label="Revelar la primera letra">Primera letra (🪙10)</button>
-        <button id="hint-solve"  class="pill" aria-label="Resolver toda la palabra">Resolver (🪙50)</button>
+        <button id="hint-letter" class="pill" aria-label="Revelar una letra">Revelar letra (⭐️35)</button>
+        <button id="hint-first"  class="pill" aria-label="Revelar la primera letra">Primera letra (⭐️50)</button>
       </div>
 
       <div id="msg" class="msg" aria-live="polite"></div>
     </main>
 
-    <!-- Input para levantar el teclado nativo: programático, no intercepta taps -->
-    <input
-      id="typer"
-      type="text"
-      inputmode="text"
-      autocomplete="off"
-      autocapitalize="off"
-      autocorrect="off"
-      enterkeyhint="go"
-      spellcheck="false"
-      class="hidden-input"
-      aria-hidden="true"
-      tabindex="-1"
-    />
-
-    <!-- Fallback para iOS muy terco -->
+    <!-- Input oculto para teclado nativo -->
+    <input id="typer" type="text" inputmode="text" autocomplete="off"
+           autocapitalize="off" autocorrect="off" enterkeyhint="go"
+           spellcheck="false" class="hidden-input" aria-hidden="true" tabindex="-1" />
     <div id="editableHack" contenteditable="true" class="hidden-input" aria-hidden="true"></div>
+
+    <!-- Overlay Game Over -->
+    <section id="gameover" class="gameover" role="dialog" aria-modal="true" aria-labelledby="go-text">
+      <div class="panel">
+        <h3 id="go-text">Has decepcionado a …</h3>
+        <p>Se acabaron tus puntos. ¡Vuelve a intentarlo!</p>
+        <button id="go-retry" class="btn primary">Reintentar (⭐️100)</button>
+      </div>
+    </section>
   </div>
 
   <script type="module" src="game.js"></script>
