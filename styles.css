@@ -114,3 +114,16 @@ html,body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sa
 @media(max-width:520px){
   .word{ gap: max(8px, var(--gap-letter)) }
 }
+/* --- Evitar que el teclado tape los slots --- */
+:root{ --kb-offset: 0px; }
+
+.kb-fix{
+  transform: translateY(calc(-1 * var(--kb-offset)));
+  transition: transform .2s ease;
+  will-change: transform;
+}
+
+/* Extra padding seguro con notch al abrir teclado */
+@supports (padding-bottom: env(safe-area-inset-bottom)){
+  .wrap{ padding-bottom: calc(22px + env(safe-area-inset-bottom)); }
+}
