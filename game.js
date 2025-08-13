@@ -228,7 +228,7 @@ EL.goRetry?.addEventListener('pointerup', (e)=>{
 }, {passive:false});
 
 function win(){
-  points += 50; updateHud();
+  points += 10; updateHud();
   EL.msg && (EL.msg.innerHTML = '<span class="ok">¡Correcto! +50 ⭐️</span>');
   EL.gamecard.classList.add('winflash');
   addSolvedAll(current.id);
