@@ -277,7 +277,7 @@ function hintFirst(){
 }
 ['pointerup'].forEach(e=>{
   EL.hintLetter?.addEventListener(e, (ev)=>{ ev.preventDefault(); hintLetter(); }, {passive:false});
-  EL.hintFirst ?.addEventListener(e, (ev)=>{ ev.preventDefault(); hintFirst (); }, {passive:false});
+  EL.hintFirst?.addEventListener(e, (ev)=>{ ev.preventDefault(); hintFirst (); }, {passive:false});
 });
 
 /* =========================================================
@@ -345,37 +345,42 @@ function ensureVirtualKeyboard(){
     const style = document.createElement('style');
     style.id = 'vk-style';
     style.textContent = `
-      :root{ --vk-h: clamp(180px, 38svh, 300px); --vk-gap: clamp(4px, 1.8vw, 8px); }
-      .vk{
-        position: fixed; left: 0; right: 0; bottom: 0; z-index: 999;
-        height: var(--vk-h);
-        background: #0f172a;
-        padding: 8px clamp(8px, 3vw, 12px) calc(10px + env(safe-area-inset-bottom));
-        box-shadow: 0 -12px 30px rgba(0,0,0,.25);
-        display: flex; flex-direction: column; justify-content: flex-end;
-        max-width: 100vw; overflow: hidden;
-      }
-      .vk-row{
-        display: grid;
-        gap: var(--vk-gap);
-        margin: clamp(2px, 0.8vh, 6px) 0;
-        padding: 0 clamp(4px, 2vw, 10px);
-      }
-      .vk-row.r1, .vk-row.r2{ grid-template-columns: repeat(10, minmax(0, 1fr)); }
-      .vk-row.r3{ grid-template-columns: repeat(9,  minmax(0, 1fr)); }
-      .vk-key{
-        border-radius: 12px;
-        background:#1f2937; color:#fff; font-weight:800;
-        display:grid; place-items:center;
-        user-select:none; -webkit-user-select:none;
-        min-width: 0;
-        height: clamp(40px, 9svh, 52px);
-        font-size: clamp(14px, 2.6svh, 18px);
-        padding: 0 clamp(2px, 1vw, 4px);
-        box-shadow: 0 2px 6px rgba(0,0,0,.2);
-      }
-      .vk-key:active{ transform: scale(.98); }
-    `;
+  :root{ --vk-h: clamp(180px, 38svh, 300px); --vk-gap: clamp(4px, 1.8vw, 8px); }
+  /* Evita escalado y zoom por doble tap */
+  html, body{ -webkit-text-size-adjust: 100%; }
+  .vk{
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 999;
+    height: var(--vk-h);
+    background: #0f172a;
+    padding: 8px clamp(8px, 3vw, 12px) calc(10px + env(safe-area-inset-bottom));
+    box-shadow: 0 -12px 30px rgba(0,0,0,.25);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    max-width: 100vw; overflow: hidden;
+    -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .vk-row{
+    display: grid;
+    gap: var(--vk-gap);
+    margin: clamp(2px, 0.8vh, 6px) 0;
+    padding: 0 clamp(4px, 2vw, 10px);
+  }
+  .vk-row.r1, .vk-row.r2{ grid-template-columns: repeat(10, minmax(0, 1fr)); }
+  .vk-row.r3{ grid-template-columns: repeat(9,  minmax(0, 1fr)); }
+  .vk-key{
+    border-radius: 12px;
+    background:#1f2937; color:#fff; font-weight:800;
+    display:grid; place-items:center;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+    min-width: 0;
+    height: clamp(40px, 9svh, 52px);
+    font-size: clamp(16px, 2.8svh, 20px);  /* 👈 mínimo 16px para que iOS no haga zoom */
+    padding: 0 clamp(2px, 1vw, 4px);
+    box-shadow: 0 2px 6px rgba(0,0,0,.2);
+    touch-action: manipulation;             /* 👈 gestos de toque, sin zoom */
+  }
+  .vk-key:active{ transform: scale(.98); }
+`;
     document.head.appendChild(style);
     document.body.appendChild(vk);
   }
@@ -385,6 +390,17 @@ function ensureVirtualKeyboard(){
     ['A','S','D','F','G','H','J','K','L','Ñ'],   // 10
     ['Z','X','C','V','B','N','M','⌫','OK']      // 9 (compacta)
   ];
+// --- Anti-zoom por doble tap y gestos en iOS ---
+let lastTap = 0;
+const stopZoom = (e)=>{ e.preventDefault(); };
+vk.addEventListener('gesturestart', stopZoom, {passive:false});  // pinza
+vk.addEventListener('dblclick',    stopZoom, {passive:false});   // doble click
+vk.addEventListener('touchend', (e)=>{
+  const now = Date.now();
+  if (now - lastTap < 350) { e.preventDefault(); } // bloquea doble-tap zoom
+  lastTap = now;
+}, {passive:false});
+  
   vk.innerHTML = '';
   rows.forEach((r, idx)=>{
     const row = document.createElement('div');
