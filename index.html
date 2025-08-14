@@ -1,51 +1,30 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#ffd166" />
-  <title>Ecuabulario</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <title>Ecuabulario — Inicio</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="bg-yellow">
+<body>
   <div class="wrap">
-    <header class="topbar">
-      <div class="brand"><span class="logo">EC</span><b>Ecuabulario</b></div>
-      <div class="hud" aria-label="Monedas">
-        <div class="coins">🪙 <span id="coins">0</span></div>
+    <section class="home-card">
+      <h1 class="title">Ecuabulario</h1>
+      <p class="subtitle">Adivina palabras 🇪🇨</p>
+
+      <div class="btn-grid" role="group" aria-label="Selecciona modo de juego">
+        <a class="btn-mode btn-classic" href="game.html">
+          <span class="emoji" aria-hidden="true">🎯</span>
+          <span>Juego tradicional</span>
+        </a>
+
+        <a class="btn-mode btn-time" href="game.html?mode=time">
+          <span class="emoji" aria-hidden="true">⏱️</span>
+          <span>Contrarreloj (2:00)</span>
+        </a>
       </div>
-    </header>
-
-    <main class="card surface">
-      <h1 class="title">Juega y aprende 🇪🇨</h1>
-      <p class="muted">Adivina palabras de Ecuador: comida, jerga, lugares y más.</p>
-
-      <div class="progress"><div id="bar" class="bar"></div></div>
-      <small class="muted"><span id="done">0</span>/<span id="total">0</span> resueltas</small>
-
-      <div class="actions">
-        <a class="btn primary" href="game.html" aria-label="Empezar a jugar">Jugar</a>
-      </div>
-    </main>
-
-    <footer class="muted foot">Tu progreso y monedas se guardan en este dispositivo.</footer>
+    </section>
   </div>
-
-  <script type="module">
-  import { ensureInit, loadPoints, getProgressAll, ALL_WORDS } from './data.js';
-  try { ensureInit(); } catch {}
-  document.getElementById('coins')?.replaceWith((()=>{
-    const div=document.createElement('div');
-    div.className='coins';
-    div.innerHTML='⭐️ <span id="points">0</span>';
-    return div;
-  })());
-  document.getElementById('points').textContent = loadPoints();
-
-  const p = getProgressAll();
-  document.getElementById('done').textContent = p.done;
-  document.getElementById('total').textContent = ALL_WORDS.length;
-  document.getElementById('bar').style.width = (p.ratio * 100) + '%';
-</script>
 </body>
 </html>
