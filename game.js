@@ -32,9 +32,18 @@ const IS_MOBILE  = IS_TOUCH && !IS_PRECISE;
 
 /* ===== persistencia de palabra actual ===== */
 const LS_CURRENT = 'ecuabulario_current_id';
-// Costos de pistas (ajústalos cuando quieras)
-const COST_HINT_LETTER = 4;  // antes 35
-const COST_HINT_FIRST  = 7;  // antes 50
+
+/* ===== costos de pistas (ajústalos cuando quieras) ===== */
+const COST_HINT_LETTER = 3;
+const COST_HINT_FIRST  = 7;
+
+/* ===== modo de juego ===== */
+const MODE = new URLSearchParams(location.search).get('mode') === 'time' ? 'time' : 'classic';
+let timeLeft = 120;   // segundos
+let timerId = null;
+let hits = 0;
+let timeStarted = false;
+let timeEnded = false;
 
 let points = loadPoints();
 if (EL.pointsEl) EL.pointsEl.textContent = points;
@@ -47,6 +56,7 @@ shuffle(queue);
 
 let current = null, answerClean = '', boxes = []; // boxes: {el,char,locked,val}
 
+/* ===== helpers básicos ===== */
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a; }
 const firstEmpty = () => boxes.find(b => !b.locked && !b.val);
 function lastFilled(){ for(let i=boxes.length-1;i>=0;i--) if(boxes[i].val && !boxes[i].locked) return i; return -1; }
@@ -69,7 +79,7 @@ function highlightNext(){
 }
 
 /* =======================
-   Auto-ajuste sin scroll
+   Auto-grid: siempre cabe
    ======================= */
 const root = document.documentElement;
 const cssNum = (name, fallback)=> {
@@ -81,7 +91,6 @@ const BASE = {
   size:  cssNum('--slot-size', 62),
   gapL:  cssNum('--gap-letter', 12),
   gapRow:cssNum('--gap-word-row', 14),
-  gapCol:cssNum('--gap-word-col', 18),
 };
 const cssVarPx = (name)=> {
   const v = getComputedStyle(root).getPropertyValue(name).trim();
@@ -89,63 +98,147 @@ const cssVarPx = (name)=> {
   return Number.isFinite(n) ? n : 0;
 };
 const setSize = (px)=> root.style.setProperty('--slot-size', px+'px');
-const setGaps = (l,r,c)=>{
+const setGaps = (l,r)=>{
   root.style.setProperty('--gap-letter', l+'px');
   root.style.setProperty('--gap-word-row', r+'px');
-  root.style.setProperty('--gap-word-col', c+'px');
 };
 const debounce = (fn, wait=120)=>{
   let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); };
 };
 
+// Calcula la mejor distribución (filas/columnas) y tamaño de slot
+function bestLayout(n){
+  const maxRowsByLen = n >= 16 ? 4 : (n >= 12 ? 3 : 2);
+  const isPortrait = window.innerHeight >= window.innerWidth;
+  const maxRows = Math.min(4, maxRowsByLen + (isPortrait ? 1 : 0));
+
+  const containerW = EL.slots.clientWidth || (window.innerWidth - 32);
+  const gapL  = cssNum('--gap-letter', BASE.gapL);
+  const gapR  = cssNum('--gap-word-row', BASE.gapRow);
+  const kH    = 1.23; // altura del slot = size * kH
+
+  const reserve = IS_MOBILE
+    ? Math.max(160, (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--vk-h')) || 0) + 40)
+    : 160;
+
+  const top = EL.slots.getBoundingClientRect().top || 0;
+  const availH = Math.max(120, window.innerHeight - top - reserve);
+
+  let best = null;
+
+  for (let r=1; r<=maxRows; r++){
+    const cols = Math.ceil(n / r);
+    let size = Math.floor((containerW - gapL*(cols-1)) / cols);
+    size = Math.max(20, Math.min(88, size)); // límites
+    const totalH = r * (size*kH) + (r-1)*gapR;
+
+    if (totalH <= availH){
+      if (!best || size > best.size){
+        best = { rows:r, cols, size };
+      }
+    }
+  }
+
+  if (!best){
+    // Fallback: fuerza r en el máximo y reduce tamaño por alto
+    const r = Math.min(maxRows, Math.max(1, Math.ceil(n/10)));
+    const cols = Math.ceil(n / r);
+    let size = Math.floor((containerW - gapL*(cols-1)) / cols);
+    size = Math.max(18, Math.min(80, size));
+    best = { rows:r, cols, size };
+  }
+
+  // Distribuye letras casi equitativo: [c1, c2, ...]
+  const counts = Array(best.rows).fill(0);
+  const base = Math.floor(n / best.rows);
+  const extra = n % best.rows;
+  for (let i=0;i<best.rows;i++) counts[i] = base + (i<extra ? 1 : 0);
+
+  return { counts, size: best.size };
+}
+
+// Renderiza el grid a partir de "boxes" existentes (no se pierden letras)
+function renderFromBoxes(layout){
+  EL.slots.innerHTML = '';
+  let idx = 0;
+  layout.counts.forEach(cols=>{
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.style.gridTemplateColumns = `repeat(${cols}, var(--slot-size))`;
+    for(let c=0;c<cols;c++){
+      const b = boxes[idx++];
+      const s = document.createElement('div');
+      s.className = 'slot' + (b.locked ? ' lock' : '');
+      s.textContent = b.val || '';
+      row.appendChild(s);
+      b.el = s; // re-bind
+    }
+    EL.slots.appendChild(row);
+  });
+  highlightNext();
+}
+
 function fitSlots(){
-  if(!current) return;
+  if(!current || !boxes.length) return;
+  const layout = bestLayout(boxes.length);
+  setSize(layout.size);
+  // Ajuste suave de gaps según tamaño
+  const gapScale = Math.max(0.65, Math.min(1, layout.size / BASE.size));
+  setGaps(Math.max(6, Math.floor(BASE.gapL * gapScale)),
+          Math.max(6, Math.floor(BASE.gapRow * gapScale)));
+  renderFromBoxes(layout);
+}
 
-  setSize(BASE.size);
-  setGaps(BASE.gapL, BASE.gapRow, BASE.gapCol);
-
-  const containerW = EL.slots.clientWidth || EL.slots.getBoundingClientRect().width || (window.innerWidth - 40);
-  const words = current.a.split(/[\s-]+/).filter(Boolean);
-  const longest = words.reduce((m,w)=>Math.max(m,w.length), 1);
-  const gapL = cssNum('--gap-letter', BASE.gapL);
-
-  let size = Math.floor( (containerW - gapL*(longest-1)) / longest );
-  size = Math.min(size, 80);
-  size = Math.max(size, 26);
-
-  // Palabras MUY largas (p.ej., "Encebollado"): permite 2 filas y evita que el slot sea diminuto
-  if (longest >= 11 && size < 26) {
-    size = 26;
+/* =======================
+        Modo Contrarreloj
+   ======================= */
+function ensureTimeUI(){
+  if (MODE !== 'time') return;
+  if (!document.getElementById('modebar')){
+    const mb = document.createElement('div');
+    mb.id = 'modebar';
+    mb.className = 'modebar';
+    mb.innerHTML = `
+      <span id="timerBadge" class="badge">2:00</span>
+      <span id="hitsBadge"  class="badge">Aciertos 0</span>
+    `;
+    const wrap = document.querySelector('.wrap') || document.body;
+    wrap.insertBefore(mb, wrap.firstChild.nextSibling || wrap.firstChild);
   }
-  setSize(size);
-
-  // Ajuste por altura disponible (reserva extra si hay teclado virtual)
-  let tries = 0;
-  while (tries < 4){
-    const rect = EL.slots.getBoundingClientRect();
-    const reserve = IS_MOBILE ? Math.max(180, cssVarPx('--vk-h') + 40) : 160;
-    const availH = Math.max(120, window.innerHeight - rect.top - reserve);
-    const needH  = EL.slots.scrollHeight;
-    if (needH <= availH) break;
-
-    const ratio = Math.max(0.6, Math.min(0.98, availH / needH));
-    size = Math.max(22, Math.floor(size * ratio));
-    setSize(size);
-
-    const gL2  = Math.max(6,  Math.floor(BASE.gapL   * ratio));
-    const gR2  = Math.max(6,  Math.floor(BASE.gapRow * ratio));
-    const gC2  = Math.max(8,  Math.floor(BASE.gapCol * ratio));
-    setGaps(gL2, gR2, gC2);
-
-    tries++;
-  }
+  EL.timerBadge = document.getElementById('timerBadge');
+  EL.hitsBadge  = document.getElementById('hitsBadge');
+  updateBadges();
+}
+function fmtTime(s){ const m = Math.floor(s/60); const ss = String(s%60).padStart(2,'0'); return `${m}:${ss}`; }
+function updateBadges(){
+  if (MODE !== 'time') return;
+  if (EL.timerBadge) EL.timerBadge.textContent = fmtTime(Math.max(0, timeLeft));
+  if (EL.hitsBadge)  EL.hitsBadge.textContent  = `Aciertos ${hits}`;
+}
+function startTimerIfNeeded(){
+  if (MODE !== 'time' || timeStarted) return;
+  timeStarted = true;
+  timerId = setInterval(()=>{
+    if (timeEnded) { clearInterval(timerId); timerId=null; return; }
+    timeLeft--;
+    updateBadges();
+    if (timeLeft <= 0) finishTimeAttack();
+  }, 1000);
+  updateBadges();
+}
+function finishTimeAttack(){
+  if (timeEnded) return;
+  timeEnded = true;
+  if (timerId){ clearInterval(timerId); timerId = null; }
+  if (EL.goText)   EL.goText.textContent = `¡Tiempo! Aciertos: ${hits}`;
+  if (EL.gameover) EL.gameover.style.display = 'flex';
 }
 
 /* =======================
         Render palabra
    ======================= */
 function newWord(){
-  // 1) Si hay palabra pendiente y no está resuelta, úsala
+  // Reusar palabra pendiente si existe
   const savedId = localStorage.getItem(LS_CURRENT);
   if (savedId) {
     const alreadySolved = getSolvedAll().has(savedId);
@@ -153,43 +246,39 @@ function newWord(){
     if (!alreadySolved && found) current = found;
   }
 
-  // 2) Si no había pendiente, toma de la cola
+  // O tomar nueva de la cola
   if (!current) {
     current = queue.shift();
     if (!current) {
-      queue = ALL_WORDS.filter(x => !getSolvedAll().has(x.id));
+      const set = getSolvedAll();
+      queue = ALL_WORDS.filter(x => !set.has(x.id));
       if (queue.length === 0) queue = [...ALL_WORDS];
       shuffle(queue);
       current = queue.shift();
     }
   }
 
-  // Guardar como pendiente hasta acertar
   localStorage.setItem(LS_CURRENT, current.id);
 
-  // Render
   if (EL.clue) EL.clue.textContent = current.clue;
-  if (EL.msg) EL.msg.textContent = '';
-  const text = current.a;
-  answerClean = norm(text);
-  EL.slots.innerHTML = '';
-  boxes = [];
+  if (EL.msg)  EL.msg.textContent  = '';
 
-  // Agrupar por PALABRAS; CSS de .word ahora permite wrap en 2 filas
-  const tokens = text.split(/[\s-]+/).filter(t => t.length);
-  tokens.forEach(token => {
-    const w = document.createElement('div');
-    w.className = 'word';
-    for (const ch of token){
-      const s = document.createElement('div');
-      s.className = 'slot';
-      w.appendChild(s);
-      boxes.push({ el:s, char: ch, locked:false, val:'' });
-    }
-    EL.slots.appendChild(w);
-  });
+  // UI contrarreloj
+  ensureTimeUI();
+  updateBadges();
 
-  highlightNext();
+  // Construir boxes SOLO con letras (espacios/guiones fuera del grid)
+  const letters = Array.from(current.a).filter(ch => /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(ch));
+  boxes = letters.map(ch => ({ el:null, char: ch, locked:false, val:'' }));
+
+  answerClean = norm(current.a);
+
+  // Render inicial según mejor distribución
+  const layout = bestLayout(boxes.length);
+  setSize(layout.size);
+  renderFromBoxes(layout);
+
+  // Ajuste fino
   requestAnimationFrame(fitSlots);
 }
 
@@ -201,11 +290,13 @@ function maybeAutoCheck(){
   else highlightNext();
 }
 function typeLetter(L){
+  if (MODE === 'time'){ if (timeEnded) return; startTimerIfNeeded(); }
   const b = firstEmpty(); if (!b) return;
   b.val = L; b.el.textContent = L; b.el.classList.add('filled');
   maybeAutoCheck();
 }
 function backspace(){
+  if (MODE === 'time' && timeEnded) return;
   const i = lastFilled(); if (i < 0) return;
   boxes[i].val = '';
   boxes[i].el.textContent = '';
@@ -220,18 +311,30 @@ function showGameOver(){
   EL.goText && (EL.goText.textContent = `Has decepcionado a ${name}`);
   EL.gameover && (EL.gameover.style.display = 'flex');
 }
+
 EL.goRetry?.addEventListener('pointerup', (e)=>{
   e.preventDefault();
-  points = 100; updateHud();
-  EL.gameover && (EL.gameover.style.display = 'none');
-  // limpiar casillas, mantener palabra
-  boxes.forEach(b => { if(!b.locked){ b.val=''; b.el.textContent=''; } });
-  EL.msg && (EL.msg.textContent = '');
-  highlightNext();
+  if (MODE === 'time'){
+    timeLeft = 120; hits = 0; timeStarted = false; timeEnded = false;
+    updateBadges();
+    if (EL.gameover) EL.gameover.style.display = 'none';
+    current = null; newWord();
+  } else {
+    points = 100; updateHud();
+    if (EL.gameover) EL.gameover.style.display = 'none';
+    // limpiar casillas pero mantener palabra
+    boxes.forEach(b => { if(!b.locked){ b.val=''; b.el.textContent=''; } });
+    EL.msg && (EL.msg.textContent = '');
+    highlightNext();
+  }
 }, {passive:false});
 
 function win(){
+  // +10 por acierto (ajustado)
   points += 10; updateHud();
+
+  if (MODE === 'time'){ hits++; updateBadges(); }
+
   EL.msg && (EL.msg.innerHTML = '<span class="ok">¡Correcto! +10 ⭐️</span>');
   EL.gamecard.classList.add('winflash');
   addSolvedAll(current.id);
@@ -239,20 +342,22 @@ function win(){
   setTimeout(()=>{
     EL.gamecard.classList.remove('winflash');
     current = null;      // fuerza elegir nueva
-    newWord();
-  }, 700);
+    if (!timeEnded) newWord();
+  }, 300);
 }
 function fail(){
-  points -= 20; updateHud();
-  EL.msg && (EL.msg.innerHTML = '<span class="bad">Incorrecto (-20 ⭐️)</span>');
-  if (navigator.vibrate) navigator.vibrate(20);
-  if (points <= 0){ showGameOver(); return; }
+  if (MODE !== 'time'){ points -= 5; updateHud(); }
+  EL.msg && (EL.msg.innerHTML = MODE==='time'
+    ? '<span class="bad">Incorrecto</span>'
+    : '<span class="bad">Incorrecto (-5 ⭐️)</span>');
+  if (navigator.vibrate) navigator.vibrate(15);
+  if (MODE !== 'time' && points <= 0){ showGameOver(); return; }
   autoClear();
 }
 function check(){ (userGuessClean() === answerClean) ? win() : fail(); }
 
 /* =======================
-           Ayudas
+           Pistas
    ======================= */
 function pay(cost){
   if (points < cost){
@@ -263,7 +368,7 @@ function pay(cost){
 }
 function hintLetter(){
   if(!boxes.length) return;
-  if(!pay(COST_HINT_LETTER)) return; // ⭐️COST_HINT_LETTER
+  if(!pay(COST_HINT_LETTER)) return;
   const cs = boxes.filter(b => !b.locked && !b.val);
   if(!cs.length){ maybeAutoCheck(); return; }
   const pick = cs[Math.floor(Math.random()*cs.length)];
@@ -272,7 +377,7 @@ function hintLetter(){
 }
 function hintFirst(){
   if(!boxes.length) return;
-  if(!pay(COST_HINT_FIRST)) return; // ⭐️COST_HINT_FIRST
+  if(!pay(COST_HINT_FIRST)) return;
   const first = boxes.find(b => !b.locked);
   if(!first){ maybeAutoCheck(); return; }
   first.val = first.char.toUpperCase(); first.el.textContent = first.val;
@@ -280,7 +385,7 @@ function hintFirst(){
 }
 ['pointerup'].forEach(e=>{
   EL.hintLetter?.addEventListener(e, (ev)=>{ ev.preventDefault(); hintLetter(); }, {passive:false});
-  EL.hintFirst?.addEventListener(e, (ev)=>{ ev.preventDefault(); hintFirst (); }, {passive:false});
+  EL.hintFirst?.addEventListener(e,  (ev)=>{ ev.preventDefault(); hintFirst();  }, {passive:false});
 });
 
 /* =========================================================
@@ -377,10 +482,10 @@ function ensureVirtualKeyboard(){
     user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
     min-width: 0;
     height: clamp(40px, 9svh, 52px);
-    font-size: clamp(16px, 2.8svh, 20px);  /* 👈 mínimo 16px para que iOS no haga zoom */
+    font-size: clamp(16px, 2.8svh, 20px);
     padding: 0 clamp(2px, 1vw, 4px);
     box-shadow: 0 2px 6px rgba(0,0,0,.2);
-    touch-action: manipulation;             /* 👈 gestos de toque, sin zoom */
+    touch-action: manipulation;
   }
   .vk-key:active{ transform: scale(.98); }
 `;
@@ -393,17 +498,18 @@ function ensureVirtualKeyboard(){
     ['A','S','D','F','G','H','J','K','L','Ñ'],   // 10
     ['Z','X','C','V','B','N','M','⌫','OK']      // 9 (compacta)
   ];
-// --- Anti-zoom por doble tap y gestos en iOS ---
-let lastTap = 0;
-const stopZoom = (e)=>{ e.preventDefault(); };
-vk.addEventListener('gesturestart', stopZoom, {passive:false});  // pinza
-vk.addEventListener('dblclick',    stopZoom, {passive:false});   // doble click
-vk.addEventListener('touchend', (e)=>{
-  const now = Date.now();
-  if (now - lastTap < 350) { e.preventDefault(); } // bloquea doble-tap zoom
-  lastTap = now;
-}, {passive:false});
-  
+
+  // Anti-zoom por doble tap y gestos en iOS
+  let lastTap = 0;
+  const stopZoom = (e)=>{ e.preventDefault(); };
+  vk.addEventListener('gesturestart', stopZoom, {passive:false});
+  vk.addEventListener('dblclick',    stopZoom, {passive:false});
+  vk.addEventListener('touchend', (e)=>{
+    const now = Date.now();
+    if (now - lastTap < 350) { e.preventDefault(); }
+    lastTap = now;
+  }, {passive:false});
+
   vk.innerHTML = '';
   rows.forEach((r, idx)=>{
     const row = document.createElement('div');
