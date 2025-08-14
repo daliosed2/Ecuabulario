@@ -32,6 +32,9 @@ const IS_MOBILE  = IS_TOUCH && !IS_PRECISE;
 
 /* ===== persistencia de palabra actual ===== */
 const LS_CURRENT = 'ecuabulario_current_id';
+// Costos de pistas (ajústalos cuando quieras)
+const COST_HINT_LETTER = 4;  // antes 35
+const COST_HINT_FIRST  = 7;  // antes 50
 
 let points = loadPoints();
 if (EL.pointsEl) EL.pointsEl.textContent = points;
@@ -260,7 +263,7 @@ function pay(cost){
 }
 function hintLetter(){
   if(!boxes.length) return;
-  if(!pay(5)) return; // ⭐️35
+  if(!pay(COST_HINT_LETTER)) return; // ⭐️COST_HINT_LETTER
   const cs = boxes.filter(b => !b.locked && !b.val);
   if(!cs.length){ maybeAutoCheck(); return; }
   const pick = cs[Math.floor(Math.random()*cs.length)];
@@ -269,7 +272,7 @@ function hintLetter(){
 }
 function hintFirst(){
   if(!boxes.length) return;
-  if(!pay(10)) return; // ⭐️50
+  if(!pay(COST_HINT_FIRST)) return; // ⭐️COST_HINT_FIRST
   const first = boxes.find(b => !b.locked);
   if(!first){ maybeAutoCheck(); return; }
   first.val = first.char.toUpperCase(); first.el.textContent = first.val;
