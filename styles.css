@@ -136,7 +136,45 @@ html,body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sa
 @supports (padding-bottom: env(safe-area-inset-bottom)){
   .wrap{ padding-bottom: calc(22px + env(safe-area-inset-bottom)); }
 }
-/* Badges del modo contrarreloj */
+/* Tarjeta de inicio con selección de modo */
+.home-card{
+  max-width: 560px;
+  margin: 24px auto;
+  background: #fff7e6;
+  border-radius: 18px;
+  padding: 20px 18px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.08);
+  text-align: center;
+}
+.title{ font-size: 1.6rem; margin: 2px 0 2px; color:#0f172a; }
+.subtitle{ color:#475569; margin: 0 0 14px; }
+/* Botones de modo */
+.btn-grid{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 420px){
+  .btn-grid{ grid-template-columns: 1fr 1fr; }
+}
+.btn-mode{
+  display:flex; align-items:center; justify-content:center;
+  gap:10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-weight: 800;
+  text-decoration:none;
+  color:#fff;
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  transition: transform .08s ease, filter .08s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.btn-mode:active{ transform: scale(.98); filter: brightness(1.05); }
+.btn-classic{ background:#0f172a; }
+.btn-time{    background:#f59e0b; color:#0f172a; }
+
+/* Barra superior de modo contrarreloj */
 .modebar{
   display:flex; justify-content:center; gap:10px;
   margin: 6px 0 0;
@@ -148,3 +186,14 @@ html,body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sa
 }
 #timerBadge{ background:#111827; }
 #hitsBadge{ background:#1f2937; }
+
+/* Contenedor de filas del auto-grid */
+#slots{
+  display:flex; flex-direction:column; align-items:center;
+  gap: var(--gap-word-row);
+  margin:16px 0 18px;
+}
+.row{
+  display:grid; gap: var(--gap-letter);
+  justify-content:center; width:100%; max-width:100%;
+}
