@@ -105,7 +105,7 @@ export const ALL_WORDS = [
 { id:'suca', a:'Suca', clue:'Mujer rubia (coloquial)' },
 { id:'tutuma', a:'Tutuma', clue:'Cabeza (coloquial)' },
 { id:'chumar', a:'Chumar', clue:'Beber en exceso' },
-{ id:'aguite', a:'Agüite', clue:'Tristeza o desánimo' },
+{ id:'aguite', a:'Aguite', clue:'Tristeza o desánimo' },
 { id:'mijin', a:'Mijín', clue:'Amigo cercano (cariñoso)' },
 { id:'fajarse', a:'Fajarse', clue:'Esforzarse mucho' },
 { id:'botado', a:'Botado', clue:'Abandonado o dejado solo' },
@@ -138,7 +138,6 @@ export const ALL_WORDS = [
 { id:'achachay', a:'Achachay', clue:'¡Qué frío! (expresión kichwa)' },
 { id:'atay', a:'Atatay', clue:'Expresión de asco (kichwa)' },
 { id:'ayayay', a:'Ayayay', clue:'Expresión de dolor (kichwa)' },
-{ id:'no_sea_malito', a:'No sea malito', clue:'“Por favor”, ruego cortés' },
 { id:'neque', a:'Ñeque', clue:'Fuerza, tenacidad' },
 ];
 
