@@ -108,14 +108,15 @@ const debounce = (fn, wait=120)=>{
 
 // Calcula la mejor distribución (filas/columnas) y tamaño de slot
 function bestLayout(n){
-  const maxRowsByLen = n >= 16 ? 4 : (n >= 12 ? 3 : 2);
+  // límites por dispositivo/orientación
   const isPortrait = window.innerHeight >= window.innerWidth;
-  const maxRows = Math.min(4, maxRowsByLen + (isPortrait ? 1 : 0));
+  const maxRows = IS_MOBILE ? (isPortrait ? 3 : 2) : 2; // desktop: máx 2 filas
+  const minCols = (!IS_MOBILE && n >= 4) ? 3 : 2;       // en desktop intenta ≥3 columnas
 
   const containerW = EL.slots.clientWidth || (window.innerWidth - 32);
   const gapL  = cssNum('--gap-letter', BASE.gapL);
   const gapR  = cssNum('--gap-word-row', BASE.gapRow);
-  const kH    = 1.23; // altura del slot = size * kH
+  const kH    = 1.18; // altura del slot = size * kH
 
   const reserve = IS_MOBILE
     ? Math.max(160, (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--vk-h')) || 0) + 40)
@@ -126,33 +127,32 @@ function bestLayout(n){
 
   let best = null;
 
-  for (let r=1; r<=maxRows; r++){
+  for (let r = 1; r <= maxRows; r++) {
     const cols = Math.ceil(n / r);
-    let size = Math.floor((containerW - gapL*(cols-1)) / cols);
-    size = Math.max(20, Math.min(88, size)); // límites
-    const totalH = r * (size*kH) + (r-1)*gapR;
+    if (cols < minCols && n >= minCols) continue; // evita muy pocas columnas en desktop
 
-    if (totalH <= availH){
-      if (!best || size > best.size){
-        best = { rows:r, cols, size };
-      }
+    let size = Math.floor((containerW - gapL * (cols - 1)) / cols);
+    size = Math.max(20, Math.min(88, size));
+    const totalH = r * (size * kH) + (r - 1) * gapR;
+
+    if (totalH <= availH) {
+      const score = size - r * 1.2; // favorece slot grande y menos filas
+      if (!best || score > best.score) best = { rows: r, cols, size, score };
     }
   }
 
-  if (!best){
-    // Fallback: fuerza r en el máximo y reduce tamaño por alto
-    const r = Math.min(maxRows, Math.max(1, Math.ceil(n/10)));
+  if (!best) {
+    const r = Math.min(maxRows, Math.max(1, Math.ceil(n / 10)));
     const cols = Math.ceil(n / r);
-    let size = Math.floor((containerW - gapL*(cols-1)) / cols);
+    let size = Math.floor((containerW - gapL * (cols - 1)) / cols);
     size = Math.max(18, Math.min(80, size));
-    best = { rows:r, cols, size };
+    best = { rows: r, cols, size, score: size - r * 1.2 };
   }
 
-  // Distribuye letras casi equitativo: [c1, c2, ...]
   const counts = Array(best.rows).fill(0);
   const base = Math.floor(n / best.rows);
   const extra = n % best.rows;
-  for (let i=0;i<best.rows;i++) counts[i] = base + (i<extra ? 1 : 0);
+  for (let i = 0; i < best.rows; i++) counts[i] = base + (i < extra ? 1 : 0);
 
   return { counts, size: best.size };
 }
