@@ -229,7 +229,7 @@ EL.goRetry?.addEventListener('pointerup', (e)=>{
 
 function win(){
   points += 10; updateHud();
-  EL.msg && (EL.msg.innerHTML = '<span class="ok">¡Correcto! +50 ⭐️</span>');
+  EL.msg && (EL.msg.innerHTML = '<span class="ok">¡Correcto! +10 ⭐️</span>');
   EL.gamecard.classList.add('winflash');
   addSolvedAll(current.id);
   localStorage.removeItem(LS_CURRENT); // ya no está pendiente
@@ -260,7 +260,7 @@ function pay(cost){
 }
 function hintLetter(){
   if(!boxes.length) return;
-  if(!pay(35)) return; // ⭐️35
+  if(!pay(5)) return; // ⭐️35
   const cs = boxes.filter(b => !b.locked && !b.val);
   if(!cs.length){ maybeAutoCheck(); return; }
   const pick = cs[Math.floor(Math.random()*cs.length)];
@@ -269,7 +269,7 @@ function hintLetter(){
 }
 function hintFirst(){
   if(!boxes.length) return;
-  if(!pay(50)) return; // ⭐️50
+  if(!pay(10)) return; // ⭐️50
   const first = boxes.find(b => !b.locked);
   if(!first){ maybeAutoCheck(); return; }
   first.val = first.char.toUpperCase(); first.el.textContent = first.val;
