@@ -1,154 +1,238 @@
+/* ===========================
+   Reset y variables de tema
+   =========================== */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  color: #0f172a; /* slate-900 */
+  overflow: hidden; /* evitamos scroll, el JS ajusta el layout */
+}
 
-
+/* Colores/espaciados base (ajustables) */
 :root{
-  /* Colores base */
-  --text:#0f172a; --muted:#4b5563;
-  --ok:#16a34a; --bad:#ef4444; --brand:#111827;
-  --yellow1:#fff3b0; --yellow2:#ffe08a; --yellow3:#ffd166;
-
-  /* Superficies y líneas */
-  --card:#ffffffcc;  /* superficie clara translúcida */
-  --line:#e5e7eb;
-
-  /* Slots (controlados por JS para evitar scroll) */
-  --slot-bg:#0b1324; --slot-line:#2f3a55; --slot-focus:#60a5fa;
-  --slot-size: 62px;          /* será recalculado por JS */
-  --gap-letter: 12px;         /* gap entre letras (en una palabra) */
-  --gap-word-row: 14px;       /* gap vertical entre filas de palabras */
-  --gap-word-col: 18px;       /* gap horizontal entre palabras */
+  --slot-size: 62px;          /* tamaño base del recuadro */
+  --gap-letter: 12px;         /* espacio entre recuadros dentro de una fila */
+  --gap-word-row: 14px;       /* espacio entre filas de recuadros */
+  --radius-xl: 18px;
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --shadow-md: 0 8px 24px rgba(0,0,0,.12);
+  --shadow-sm: 0 4px 14px rgba(0,0,0,.10);
+  --ink: #0f172a;             /* casi negro */
+  --ink-2: #334155;           /* slate-600 */
+  --surface: #fffaf1;         /* crema */
+  --pill: #0f172a;            /* pastillas oscuras */
+  --pill-ink: #fff;
 }
 
-/* Fondo amarillo para TODAS las pantallas */
+/* ===========================
+   Fondo del sitio
+   =========================== */
 .bg-yellow{
-  background: radial-gradient(900px 600px at 20% 0%, var(--yellow1) 0%, var(--yellow2) 50%, var(--yellow3) 100%);
-  min-height: 100vh;
-  color: var(--text);
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(255,255,255,.5), rgba(255,255,255,0)),
+    radial-gradient(1200px 600px at 80% 10%, rgba(255,255,255,.5), rgba(255,255,255,0)),
+    linear-gradient(180deg, #ffd977 0%, #f4c95d 28%, #f1c14c 100%);
+  min-height: 100svh;
 }
 
-*{box-sizing:border-box}
-html,body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif}
-.wrap{max-width:900px;margin:0 auto;padding:22px}
-
-/* Header */
-.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.brand{display:flex;gap:8px;align-items:center}
-.logo{width:36px;height:36px;border-radius:8px;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:900}
-
-.hud,.status{display:flex;align-items:center;gap:10px}
-.coins{background:#0d111b;border:1px solid #232a3d;padding:9px 14px;border-radius:999px;font-weight:700;color:#e7e9ee}
-
-/* Superficie común (index y game) */
-.card.surface{
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 18px;
-  backdrop-filter: blur(2px);
+/* Contenedor general */
+.wrap{
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 16px;
+  padding-bottom: env(safe-area-inset-bottom);
 }
-.title{margin:6px 0 8px}
-.muted{color:var(--muted)}
-.actions{margin-top:12px}
-.foot{margin-top:16px;color:#374151}
 
-.progress{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
-.progress.small{height:8px}
-.bar{height:100%;background:linear-gradient(90deg,#22c55e,#84cc16);width:0%}
-
-.btn{border:1px solid var(--brand);background:var(--brand);color:#fff;padding:12px 16px;border-radius:12px;cursor:pointer;text-decoration:none;min-height:44px}
-.btn.primary{background:var(--brand)}
-.pill{padding:12px 14px;border-radius:999px;border:1px solid #293042;background:#121826;color:#cbd5e1;cursor:pointer;min-height:44px}
-
-/* --- Juego: recuadros protagonistas por PALABRA --- */
-.clue{margin:10px 0 14px}
-
-#slots{
-  display:flex; flex-wrap:wrap;
-  gap: var(--gap-word-row) var(--gap-word-col);
-  justify-content:center;
-  margin:16px 0 18px;
+/* ===========================
+   Tarjeta del juego
+   =========================== */
+.gamecard{
+  background: var(--surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  padding: 16px 16px 14px;
+  margin: 12px auto 0;
 }
-.word{
+.gamecard .clue{
+  font-weight: 800;
+  font-size: 1.05rem;
+  margin: 2px 0 10px;
+}
+#msg{
+  min-height: 22px;
+  margin: 4px 0 0;
+  font-weight: 700;
+}
+#msg .ok{ color:#15803d; }   /* verde */
+#msg .bad{ color:#b91c1c; }  /* rojo */
+
+/* ===========================
+   Pistas (botones tipo pastilla)
+   =========================== */
+.hints{
   display:flex;
-  gap: var(--gap-letter);
-  flex-wrap: wrap;        /* ← permite que una palabra larga se parta en 2 líneas */
-  max-width: 100%;
-  justify-content: center;
-  row-gap: calc(var(--gap-letter) * 0.6); /* espacio vertical cuando se parte */
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.pill{
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 9px 12px;
+  background: var(--pill);
+  color: var(--pill-ink);
+  font-weight: 800;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.pill:active{ transform: scale(.98); filter: brightness(1.05); }
+.pill[disabled]{ opacity:.55; pointer-events:none; filter:grayscale(.2); }
+
+/* ===========================
+   Auto-grid de casillas
+   =========================== */
+#slots{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-word-row);
+  margin: 16px 0 18px;
 }
 
+.row{
+  display: grid;
+  gap: var(--gap-letter);
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Recuadro individual */
 .slot{
   width: var(--slot-size);
-  height: calc(var(--slot-size) * 1.23); /* ~62x76 proporción */
-  border:3px solid var(--slot-line);
-  border-radius:16px;
-  display:grid; place-items:center;
-  font-weight:900;
-  font-size: calc(var(--slot-size) * 0.32);
-  background:var(--slot-bg); color:#e8ecf4;
-  box-shadow:0 10px 28px rgba(0,0,0,.25);
-  transition:transform .08s, border-color .15s, box-shadow .15s;
+  height: calc(var(--slot-size) * 1.18);  /* un poco más alto para “look” de ficha */
+  border-radius: 12px;
+  background: #0f172a;      /* oscuro */
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: calc(var(--slot-size) * 0.48);
+  letter-spacing: .5px;
+  box-shadow: 0 3px 10px rgba(0,0,0,.15) inset, 0 1px 0 rgba(255,255,255,.08);
+  transition: transform .06s ease, box-shadow .12s ease, outline-color .12s ease;
+  outline: 2px solid transparent;
 }
-.slot.filled{animation:pop .08s ease}
-.slot.focus{border-color:var(--slot-focus); box-shadow:0 0 0 3px rgba(96,165,250,.25)}
-.slot.lock{background:#0f2a18;border-color:#1f4d2c}
+.slot.filled{ box-shadow: 0 2px 6px rgba(0,0,0,.18) inset, 0 2px 8px rgba(0,0,0,.12); }
+.slot.lock{   background:#1f2937; outline-color:#94a3b8; } /* bloqueada por pista */
+.slot.focus{  outline-color:#f59e0b; }
 
-@keyframes pop{0%{transform:scale(.92)}100%{transform:scale(1)}}
+/* ===========================
+   Top/HUD (si lo usas)
+   =========================== */
+.topbar, .hud{
+  display:flex; align-items:center; justify-content:space-between;
+  margin: 0 0 6px;
+}
+.badge{
+  background:#0f172a; color:#fff; font-weight:700;
+  padding:4px 10px; border-radius:999px; font-size:.92rem;
+  box-shadow:0 2px 6px rgba(0,0,0,.15);
+}
+#points, .points { font-weight:800; }
 
-.msg{min-height:24px;margin-top:10px}
-.ok{color:var(--ok)} .bad{color:var(--bad)}
-.shake{animation:shake .18s linear 0s 2}
-@keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-4px)}50%{transform:translateX(4px)}75%{transform:translateX(-3px)}100%{transform:translateX(0)}}
-.winflash{box-shadow:0 0 0 0 rgba(34,197,94,.0);animation:flash .7s ease}
-@keyframes flash{0%{box-shadow:0 0 0 0 rgba(34,197,94,.0)}45%{box-shadow:0 0 40px 6px rgba(34,197,94,.35)}100%{box-shadow:0 0 0 0 rgba(34,197,94,.0)}}
+/* Barra superior específica del modo contrarreloj */
+.modebar{
+  display:flex; justify-content:center; gap:10px;
+  margin: 6px 0 0;
+}
+#timerBadge{ background:#111827; }
+#hitsBadge{ background:#1f2937; }
 
-/* Input/fallback dentro del viewport, NO bloquean taps */
-.hidden-input{
+/* ===========================
+   Animaciones de feedback
+   =========================== */
+@keyframes shake-kf {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+.shake{ animation: shake-kf .22s linear both; }
+
+@keyframes winflash-kf {
+  0% { box-shadow: 0 0 0 rgba(245,158,11,0); }
+  50% { box-shadow: 0 0 0 8px rgba(245,158,11,.25); }
+  100%{ box-shadow: 0 0 0 rgba(245,158,11,0); }
+}
+.winflash{ animation: winflash-kf .35s ease; }
+
+/* ===========================
+   Overlay de game over / tiempo
+   =========================== */
+#gameover{
   position: fixed;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 1px; height: 1px;       /* suficientemente visible para iOS */
-  opacity: 0.01; background: transparent; color: transparent;
-  border: 0; caret-color: transparent;
-  z-index: 0;               /* debajo de todo */
-  pointer-events: none;     /* no intercepta toques */
+  inset: 0;
+  display: none;           /* se muestra con JS */
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.45);
+  z-index: 9999;
+  padding: 24px;
+}
+#gameover .card{
+  max-width: 520px;
+  width: 100%;
+  background: #fff;
+  color: var(--ink);
+  border-radius: var(--radius-xl);
+  padding: 18px 16px;
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+#gameover h3{ margin: 0 0 6px; font-size: 1.2rem; }
+#gameover p{ margin: 4px 0 14px; color: var(--ink-2); }
+#gameover .btn{
+  display:inline-block; border:0; cursor:pointer; user-select:none;
+  background:#0f172a; color:#fff; border-radius:12px; padding:10px 14px; font-weight:800;
 }
 
-/* Accesibilidad: respeta preferencia de reducir animaciones */
-@media (prefers-reduced-motion: reduce){
-  *{animation:none !important; transition:none !important}
+/* ===========================
+   Input “centinela” (desktop)
+   =========================== */
+#typer{
+  position: fixed !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
-/* Responsive fino */
-@media(max-width:520px){
-  .word{ gap: max(8px, var(--gap-letter)) }
-}
-/* --- Evitar que el teclado tape los slots --- */
-:root{ --kb-offset: 0px; }
-
-.kb-fix{
-  transform: translateY(calc(-1 * var(--kb-offset)));
-  transition: transform .2s ease;
-  will-change: transform;
-}
-
-/* Extra padding seguro con notch al abrir teclado */
-@supports (padding-bottom: env(safe-area-inset-bottom)){
-  .wrap{ padding-bottom: calc(22px + env(safe-area-inset-bottom)); }
-}
-/* Tarjeta de inicio con selección de modo */
+/* ===========================
+   Pantalla de inicio (index)
+   =========================== */
 .home-card{
   max-width: 560px;
   margin: 24px auto;
   background: #fff7e6;
-  border-radius: 18px;
+  border-radius: var(--radius-xl);
   padding: 20px 18px;
-  box-shadow: 0 6px 20px rgba(0,0,0,.08);
+  box-shadow: var(--shadow-md);
   text-align: center;
 }
 .title{ font-size: 1.6rem; margin: 2px 0 2px; color:#0f172a; }
 .subtitle{ color:#475569; margin: 0 0 14px; }
-/* Botones de modo */
+
+/* Botones de selección de modo */
 .btn-grid{
   display: grid;
   grid-template-columns: 1fr;
@@ -161,11 +245,11 @@ html,body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sa
   display:flex; align-items:center; justify-content:center;
   gap:10px;
   padding: 14px 16px;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   font-weight: 800;
   text-decoration:none;
   color:#fff;
-  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  box-shadow: var(--shadow-sm);
   transition: transform .08s ease, filter .08s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -173,27 +257,10 @@ html,body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sa
 .btn-mode:active{ transform: scale(.98); filter: brightness(1.05); }
 .btn-classic{ background:#0f172a; }
 .btn-time{    background:#f59e0b; color:#0f172a; }
+.btn-mode .emoji{ font-size: 1.25rem; line-height: 1; }
 
-/* Barra superior de modo contrarreloj */
-.modebar{
-  display:flex; justify-content:center; gap:10px;
-  margin: 6px 0 0;
-}
-.badge{
-  background:#0f172a; color:#fff; font-weight:700;
-  padding:4px 10px; border-radius:999px; font-size:.92rem;
-  box-shadow:0 2px 6px rgba(0,0,0,.15);
-}
-#timerBadge{ background:#111827; }
-#hitsBadge{ background:#1f2937; }
-
-/* Contenedor de filas del auto-grid */
-#slots{
-  display:flex; flex-direction:column; align-items:center;
-  gap: var(--gap-word-row);
-  margin:16px 0 18px;
-}
-.row{
-  display:grid; gap: var(--gap-letter);
-  justify-content:center; width:100%; max-width:100%;
-}
+/* ===========================
+   Utilidades menores
+   =========================== */
+.hidden{ display:none !important; }
+.center{ text-align:center; }
