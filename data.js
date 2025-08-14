@@ -31,7 +31,6 @@ export const ALL_WORDS = [
   // Jerga & expresiones
   { id:'ñano', a:'Ñaño', clue:'Hermano/a o amigo cercano' },
   { id:'deley', a:'De ley', clue:'Seguro, por supuesto' },
-  { id:'achachay', a:'Achachay', clue:'¡Qué frío! (kichwa)' },
   { id:'arrarray', a:'Arrarray', clue:'¡Qué calor! (kichwa)' },
   { id:'chuta', a:'Chuta', clue:'Sorpresa o frustración' },
   { id:'chendo', a:'Chendo', clue:'Es broma / estoy jugando' },
@@ -49,7 +48,7 @@ export const ALL_WORDS = [
   { id:'canguil', a:'Canguil', clue:'Palomitas de maíz' },
   { id:'visaje', a:'Visaje', clue:'Problema o inconveniente' },
   { id:'fresco', a:'Fresco', clue:'Tranquilo / no hay problema' },
-  { id:'yucho', a:'Yucho', clue:'Persona sin prendas de vestir' },
+  { id:'llucho', a:'Llucho', clue:'Persona sin prendas de vestir' },
   { id:'shunsho', a:'shunsho', clue:'tonto/menso/bobo'},
 
   // Lugares & cultura
@@ -111,6 +110,36 @@ export const ALL_WORDS = [
 { id:'fajarse', a:'Fajarse', clue:'Esforzarse mucho' },
 { id:'botado', a:'Botado', clue:'Abandonado o dejado solo' },
 { id:'plena', a:'Plena', clue:'Verdad directa o completa' },
+  // Jerga & expresiones (una sola palabra, nuevas desde Dancefree)
+{ id:'huaira', a:'Huaira', clue:'Viento' },
+{ id:'labia', a:'Labia', clue:'Habilidad para hablar, palabra encantadora' },
+  // Jerga & expresiones (una sola palabra, nuevas desde ChokoTrip)
+{ id:'aguaje', a:'Aguaje', clue:'Marea alta' },
+{ id:'alhaja', a:'Alhaja', clue:'Simpático, bonito' },
+{ id:'allulla', a:'Allulla', clue:'Pan típico de Latacunga (harina de maíz)' },
+{ id:'acisito', a:'Aquisito', clue:'Cerca, a una distancia cercana' },
+{ id:'bacilar', a:'Bacilar', clue:'1) Pasarlo bien • 2) Molestar • 3) Un beso sin compromiso' },
+{ id:'balde', a:'Balde', clue:'Parte trasera de una camioneta' },
+{ id:'bola', a:'Bola', clue:'Mucho o en gran cantidad' },
+{ id:'biela', a:'Biela', clue:'Cerveza' },
+{ id:'caleta', a:'Caleta', clue:'Casa' },
+{ id:'chagra', a:'Chagra', clue:'Vaquero andino típico' },
+{ id:'chaquinan', a:'Chaquiñán', clue:'Sendero' },
+{ id:'chiva', a:'Chiva', clue:'Bus festivo sin puertas ni ventanas' },
+{ id:'chupar', a:'Chupar', clue:'Beber alcohol' },
+{ id:'chumado', a:'Chumado', clue:'Borracho' },
+{ id:'jeva', a:'Jeva', clue:'Mujer, novia' },
+{ id:'locro', a:'Locro', clue:'Sopa andina de papa, queso, leche y aguacate' },
+{ id:'montubio', a:'Montubio', clue:'Vaquero de la Costa' },
+{ id:'pacheco', a:'Pacheco', clue:'Frío' },
+{ id:'pite', a:'Pite', clue:'Un poquito' },
+{ id:'soroche', a:'Soroche', clue:'Mal de altura' },
+{ id:'suco', a:'Suco', clue:'Rubio, de cabello claro' },
+{ id:'achachay', a:'Achachay', clue:'¡Qué frío! (expresión kichwa)' },
+{ id:'atay', a:'Atatay', clue:'Expresión de asco (kichwa)' },
+{ id:'ayayay', a:'Ayayay', clue:'Expresión de dolor (kichwa)' },
+{ id:'no_sea_malito', a:'No sea malito', clue:'“Por favor”, ruego cortés' },
+{ id:'neque', a:'Ñeque', clue:'Fuerza, tenacidad' },
 ];
 
 // --- Storage global (PUNTOS + resueltos) ---
