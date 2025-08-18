@@ -295,3 +295,29 @@ body {
   }
 }
 
+/* Barra de progreso (HUD) */
+.hud{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin: 6px 0 10px;
+}
+.hud-right{ display:flex; gap:8px; align-items:center; }
+
+.progress{
+  flex:1;
+  height: 10px;
+  background: #fde68a;            /* amarillo claro */
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.08);
+}
+.progress #bar, #bar{
+  height: 100%;
+  width: 0%;
+  background: #f59e0b;            /* naranja */
+  border-radius: 999px;
+  transition: width .25s ease;
+}
+
