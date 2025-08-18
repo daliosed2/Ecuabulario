@@ -254,7 +254,7 @@ function newWord(){
 function layoutByWords(wordLens){
   const isPortrait = window.innerHeight >= window.innerWidth;
   const maxRows = IS_MOBILE ? (isPortrait ? 3 : 2) : 2; // móvil: hasta 3 en vertical; desktop: máx 2
-  const containerW = EL.slots.clientWidth || (window.innerWidth - 32);
+  const containerW = (EL.slots?.clientWidth ?? 0) || (window.innerWidth - 32);
   const gapL  = cssNum('--gap-letter', BASE.gapL);
   const gapW  = cssNum('--gap-word-col', BASE.gapCol);
 
@@ -308,6 +308,7 @@ function layoutByWords(wordLens){
 
 /* ===== Render segun layout por PALABRAS ===== */
 function renderByWords(layout){
+  if (!EL.slots) return;
   EL.slots.innerHTML = '';
   let idx = 0;
 
@@ -339,7 +340,7 @@ function renderByWords(layout){
 
 /* ===== Ajuste final ===== */
 function fitSlots(){
-  if (!current || !boxes.length) return;
+  if (!current || !boxes.length || !EL.slots) return;
 
   const layout = layoutByWords(TOKEN_LENS);
   setSize(layout.size);
