@@ -153,30 +153,63 @@ function finishTimeAttack(){
    Render palabra (por palabras)
    ======================= */
 function newWord(){
-  // Reusar palabra pendiente si existe
+  // 1) Si hay palabra pendiente y no está resuelta, úsala
   const savedId = localStorage.getItem(LS_CURRENT);
   if (savedId) {
     const alreadySolved = getSolvedAll().has(savedId);
     const found = ALL_WORDS.find(w => w.id === savedId);
     if (!alreadySolved && found) current = found;
   }
-  // O tomar nueva de la cola
+
+  // 2) Si no hay pendiente, saca la siguiente SIN repetir palabras ya acertadas
   if (!current) {
-    current = queue.shift();
-    if (!current) {
-      const set = getSolvedAll();
-      queue = ALL_WORDS.filter(x => !set.has(x.id));
-      if (queue.length === 0) queue = [...ALL_WORDS];
-      shuffle(queue);
-      current = queue.shift();
+    const solvedNow = getSolvedAll();
+
+    // Limpia la cola por si quedó algo ya resuelto
+    queue = queue.filter(w => !solvedNow.has(w.id));
+
+    // Si la cola quedó vacía, vuelve a llenar SOLO con no resueltas
+    if (queue.length === 0) {
+      const fresh = ALL_WORDS.filter(w => !solvedNow.has(w.id));
+      if (fresh.length === 0) {
+        // No quedan palabras nuevas: mostramos fin de banco
+        localStorage.removeItem(LS_CURRENT);
+        if (EL.clue) EL.clue.textContent = '¡No hay más palabras por ahora!';
+        if (EL.msg)  EL.msg.innerHTML = '<span class="ok">Completaste todas 👏</span>';
+        if (EL.goText) EL.goText.textContent = '¡Has completado todas las palabras!';
+        if (EL.gameover) EL.gameover.style.display = 'flex';
+        return;
+      }
+      shuffle(fresh);
+      queue = fresh;
     }
+
+    current = queue.shift();
   }
 
+  // Guardar como pendiente hasta acertarla (evita cambio si recargas)
   localStorage.setItem(LS_CURRENT, current.id);
 
+  // UI
   if (EL.clue) EL.clue.textContent = current.clue;
   if (EL.msg)  EL.msg.textContent  = '';
 
+  // Prepara BOXES (solo letras) y TOKEN_LENS (longitud por palabra)
+  const tokens = current.a.split(/[\s-]+/).filter(Boolean);
+  const isLetter = ch => /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(ch);
+
+  TOKEN_LENS = tokens.map(t => [...t].filter(isLetter).length);
+
+  boxes = [];
+  tokens.forEach(t => {
+    for (const ch of t){
+      if (isLetter(ch)) boxes.push({ el:null, char:ch, locked:false, val:'' });
+    }
+  });
+
+  answerClean = norm(current.a);
+  fitSlots(); // render inicial
+}
   // UI contrarreloj
   ensureTimeUI();
   updateBadges();
