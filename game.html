@@ -18,7 +18,6 @@
     <header class="topbar">
       <a class="btn" href="index.html" aria-label="Volver al inicio">🏠</a>
       <div class="status" aria-live="polite">
-        <span id="level">Nivel 1</span>
         <div class="progress small"><div id="bar" class="bar"></div></div>
       </div>
       <div class="hud" aria-label="Puntos">
@@ -27,6 +26,14 @@
     </header>
 
     <main class="card surface gamecard" id="gamecard">
+<header class="hud">
+  <div class="progress"><div id="bar"></div></div>
+  <div class="hud-right">
+    <span id="level" class="badge">Nivel 1</span>
+    <span class="badge">⭐ <span id="points">100</span></span>
+  </div>
+</header>
+
       <h2 id="clue" class="clue">Cargando…</h2>
       <div id="slots" class="slots" role="group" aria-label="Casillas de la respuesta"></div>
 
