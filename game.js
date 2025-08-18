@@ -33,8 +33,8 @@ const IS_MOBILE  = IS_TOUCH && !IS_PRECISE;
 /* ===== persistencia de palabra actual ===== */
 const LS_CURRENT = 'ecuabulario_current_id';
 
-/* ===== costos de pistas (ajústalos cuando quieras) ===== */
-const COST_HINT_LETTER = 3;
+/* ===== costos de pistas ===== */
+const COST_HINT_LETTER = 4;
 const COST_HINT_FIRST  = 7;
 
 /* ===== modo de juego ===== */
@@ -45,18 +45,19 @@ let hits = 0;
 let timeStarted = false;
 let timeEnded = false;
 
+/* ===== estado general ===== */
 let points = loadPoints();
 if (EL.pointsEl) EL.pointsEl.textContent = points;
 
-/* ===== banco y estado ===== */
 const solvedSet = getSolvedAll();
 let queue = ALL_WORDS.filter(x => !solvedSet.has(x.id));
 if (queue.length === 0) queue = [...ALL_WORDS];
 shuffle(queue);
 
 let current = null, answerClean = '', boxes = []; // boxes: {el,char,locked,val}
+let TOKEN_LENS = []; // longitudes de cada palabra (solo letras)
 
-/* ===== helpers básicos ===== */
+/* ===== helpers ===== */
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a; }
 const firstEmpty = () => boxes.find(b => !b.locked && !b.val);
 function lastFilled(){ for(let i=boxes.length-1;i>=0;i--) if(boxes[i].val && !boxes[i].locked) return i; return -1; }
@@ -70,16 +71,16 @@ function updateHud(){
 }
 
 function highlightNext(){
-  boxes.forEach(b => b.el.classList.remove('focus'));
+  boxes.forEach(b => b.el?.classList.remove('focus'));
   const b = firstEmpty();
-  if (b){
+  if (b && b.el){
     b.el.classList.add('focus');
     try { b.el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' }); } catch {}
   }
 }
 
 /* =======================
-   Auto-grid: siempre cabe
+   Auto-ajuste / variables CSS
    ======================= */
 const root = document.documentElement;
 const cssNum = (name, fallback)=> {
@@ -91,106 +92,20 @@ const BASE = {
   size:  cssNum('--slot-size', 62),
   gapL:  cssNum('--gap-letter', 12),
   gapRow:cssNum('--gap-word-row', 14),
-};
-const cssVarPx = (name)=> {
-  const v = getComputedStyle(root).getPropertyValue(name).trim();
-  const n = parseFloat(v);
-  return Number.isFinite(n) ? n : 0;
+  gapCol:cssNum('--gap-word-col', 18),
 };
 const setSize = (px)=> root.style.setProperty('--slot-size', px+'px');
-const setGaps = (l,r)=>{
+const setGaps = (l,r,c)=>{
   root.style.setProperty('--gap-letter', l+'px');
   root.style.setProperty('--gap-word-row', r+'px');
+  root.style.setProperty('--gap-word-col', c+'px');
 };
 const debounce = (fn, wait=120)=>{
   let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); };
 };
 
-// Calcula la mejor distribución (filas/columnas) y tamaño de slot
-function bestLayout(n){
-  // límites por dispositivo/orientación
-  const isPortrait = window.innerHeight >= window.innerWidth;
-  const maxRows = IS_MOBILE ? (isPortrait ? 3 : 2) : 2; // desktop: máx 2 filas
-  const minCols = (!IS_MOBILE && n >= 4) ? 3 : 2;       // en desktop intenta ≥3 columnas
-
-  const containerW = EL.slots.clientWidth || (window.innerWidth - 32);
-  const gapL  = cssNum('--gap-letter', BASE.gapL);
-  const gapR  = cssNum('--gap-word-row', BASE.gapRow);
-  const kH    = 1.18; // altura del slot = size * kH
-
-  const reserve = IS_MOBILE
-    ? Math.max(160, (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--vk-h')) || 0) + 40)
-    : 160;
-
-  const top = EL.slots.getBoundingClientRect().top || 0;
-  const availH = Math.max(120, window.innerHeight - top - reserve);
-
-  let best = null;
-
-  for (let r = 1; r <= maxRows; r++) {
-    const cols = Math.ceil(n / r);
-    if (cols < minCols && n >= minCols) continue; // evita muy pocas columnas en desktop
-
-    let size = Math.floor((containerW - gapL * (cols - 1)) / cols);
-    size = Math.max(20, Math.min(88, size));
-    const totalH = r * (size * kH) + (r - 1) * gapR;
-
-    if (totalH <= availH) {
-      const score = size - r * 1.2; // favorece slot grande y menos filas
-      if (!best || score > best.score) best = { rows: r, cols, size, score };
-    }
-  }
-
-  if (!best) {
-    const r = Math.min(maxRows, Math.max(1, Math.ceil(n / 10)));
-    const cols = Math.ceil(n / r);
-    let size = Math.floor((containerW - gapL * (cols - 1)) / cols);
-    size = Math.max(18, Math.min(80, size));
-    best = { rows: r, cols, size, score: size - r * 1.2 };
-  }
-
-  const counts = Array(best.rows).fill(0);
-  const base = Math.floor(n / best.rows);
-  const extra = n % best.rows;
-  for (let i = 0; i < best.rows; i++) counts[i] = base + (i < extra ? 1 : 0);
-
-  return { counts, size: best.size };
-}
-
-// Renderiza el grid a partir de "boxes" existentes (no se pierden letras)
-function renderFromBoxes(layout){
-  EL.slots.innerHTML = '';
-  let idx = 0;
-  layout.counts.forEach(cols=>{
-    const row = document.createElement('div');
-    row.className = 'row';
-    row.style.gridTemplateColumns = `repeat(${cols}, var(--slot-size))`;
-    for(let c=0;c<cols;c++){
-      const b = boxes[idx++];
-      const s = document.createElement('div');
-      s.className = 'slot' + (b.locked ? ' lock' : '');
-      s.textContent = b.val || '';
-      row.appendChild(s);
-      b.el = s; // re-bind
-    }
-    EL.slots.appendChild(row);
-  });
-  highlightNext();
-}
-
-function fitSlots(){
-  if(!current || !boxes.length) return;
-  const layout = bestLayout(boxes.length);
-  setSize(layout.size);
-  // Ajuste suave de gaps según tamaño
-  const gapScale = Math.max(0.65, Math.min(1, layout.size / BASE.size));
-  setGaps(Math.max(6, Math.floor(BASE.gapL * gapScale)),
-          Math.max(6, Math.floor(BASE.gapRow * gapScale)));
-  renderFromBoxes(layout);
-}
-
 /* =======================
-        Modo Contrarreloj
+   UI contrarreloj
    ======================= */
 function ensureTimeUI(){
   if (MODE !== 'time') return;
@@ -235,7 +150,7 @@ function finishTimeAttack(){
 }
 
 /* =======================
-        Render palabra
+   Render palabra (por palabras)
    ======================= */
 function newWord(){
   // Reusar palabra pendiente si existe
@@ -245,7 +160,6 @@ function newWord(){
     const found = ALL_WORDS.find(w => w.id === savedId);
     if (!alreadySolved && found) current = found;
   }
-
   // O tomar nueva de la cola
   if (!current) {
     current = queue.shift();
@@ -267,19 +181,126 @@ function newWord(){
   ensureTimeUI();
   updateBadges();
 
-  // Construir boxes SOLO con letras (espacios/guiones fuera del grid)
-  const letters = Array.from(current.a).filter(ch => /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(ch));
-  boxes = letters.map(ch => ({ el:null, char: ch, locked:false, val:'' }));
+  // Prepara BOXES (solo letras) y TOKEN_LENS (longitud por palabra)
+  const tokens = current.a.split(/[\s-]+/).filter(Boolean);
+  const isLetter = ch => /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(ch);
+
+  TOKEN_LENS = tokens.map(t => [...t].filter(isLetter).length);
+
+  boxes = [];
+  tokens.forEach(t => {
+    for (const ch of t){
+      if (isLetter(ch)) boxes.push({ el:null, char:ch, locked:false, val:'' });
+    }
+  });
 
   answerClean = norm(current.a);
+  fitSlots(); // render inicial
+}
 
-  // Render inicial según mejor distribución
-  const layout = bestLayout(boxes.length);
+/* ===== Cálculo layout por PALABRAS ===== */
+function layoutByWords(wordLens){
+  const isPortrait = window.innerHeight >= window.innerWidth;
+  const maxRows = IS_MOBILE ? (isPortrait ? 3 : 2) : 2; // móvil: hasta 3 en vertical; desktop: máx 2
+  const containerW = EL.slots.clientWidth || (window.innerWidth - 32);
+  const gapL  = cssNum('--gap-letter', BASE.gapL);
+  const gapW  = cssNum('--gap-word-col', BASE.gapCol);
+
+  // Tamaños base por plataforma
+  const sizeMax = IS_MOBILE ? 54 : 88;
+  const sizeMin = IS_MOBILE ? 22 : 24;
+
+  // Si es UNA sola palabra: SIEMPRE 1 fila
+  if (wordLens.length === 1){
+    const n = wordLens[0];
+    let size = Math.floor( (containerW - gapL*(n-1)) / n );
+    size = Math.max(sizeMin, Math.min(size, sizeMax));
+    return { size, rows: [ [n] ] };
+  }
+
+  // Empaquetar palabras en filas para un tamaño dado
+  const packRows = (sz)=>{
+    const rows = [];
+    let row = [];
+    let used = 0;
+    for (let i=0;i<wordLens.length;i++){
+      const n = wordLens[i];
+      const wordWidth = n*sz + (n-1)*gapL;
+      const extra = row.length ? gapW : 0;
+      if (!row.length){
+        row.push(n);
+        used = wordWidth;
+      } else if (used + extra + wordWidth <= containerW){
+        row.push(n);
+        used += extra + wordWidth;
+      } else {
+        rows.push(row);
+        row = [n];
+        used = wordWidth;
+      }
+    }
+    if (row.length) rows.push(row);
+    return rows;
+  };
+
+  // Buscar el tamaño mayor que entra en <= maxRows
+  let size = sizeMax, rows = packRows(size);
+  while (rows.length > maxRows && size > sizeMin){
+    size -= 2;
+    rows = packRows(size);
+  }
+  if (rows.length > maxRows){ size = sizeMin; rows = packRows(size); }
+
+  return { size, rows };
+}
+
+/* ===== Render segun layout por PALABRAS ===== */
+function renderByWords(layout){
+  EL.slots.innerHTML = '';
+  let idx = 0;
+
+  layout.rows.forEach(rowSpec=>{
+    const row = document.createElement('div');
+    row.className = 'row';
+
+    rowSpec.forEach(wordLen=>{
+      const w = document.createElement('div');
+      w.className = 'word';
+      w.style.gridTemplateColumns = `repeat(${wordLen}, var(--slot-size))`;
+
+      for(let i=0;i<wordLen;i++){
+        const b = boxes[idx++];
+        const s = document.createElement('div');
+        s.className = 'slot' + (b.locked ? ' lock' : '');
+        s.textContent = b.val || '';
+        w.appendChild(s);
+        b.el = s; // re-bind
+      }
+      row.appendChild(w);
+    });
+
+    EL.slots.appendChild(row);
+  });
+
+  highlightNext();
+}
+
+/* ===== Ajuste final ===== */
+function fitSlots(){
+  if (!current || !boxes.length) return;
+
+  const layout = layoutByWords(TOKEN_LENS);
   setSize(layout.size);
-  renderFromBoxes(layout);
 
-  // Ajuste fino
-  requestAnimationFrame(fitSlots);
+  // Ajuste de gaps según tamaño elegido
+  const scale = Math.max(0.6, Math.min(1, layout.size / BASE.size));
+  setGaps(
+    Math.max(6,  Math.floor(BASE.gapL   * scale)),   // letras dentro de palabra
+    Math.max(6,  Math.floor(BASE.gapRow * scale)),   // separación entre filas
+    Math.max(10, Math.floor(BASE.gapCol * scale))    // separación entre palabras
+  );
+
+  renderByWords(layout);
 }
 
 /* =======================
@@ -321,7 +342,7 @@ EL.goRetry?.addEventListener('pointerup', (e)=>{
     current = null; newWord();
   } else {
     points = 100; updateHud();
-    if (EL.gameover) EL.gameover.style.display = 'none';
+    if (EL.gameover) EL.gameover.style.display = 'none');
     // limpiar casillas pero mantener palabra
     boxes.forEach(b => { if(!b.locked){ b.val=''; b.el.textContent=''; } });
     EL.msg && (EL.msg.textContent = '');
@@ -330,7 +351,7 @@ EL.goRetry?.addEventListener('pointerup', (e)=>{
 }, {passive:false});
 
 function win(){
-  // +10 por acierto (ajustado)
+  // +10 por acierto (clásico)
   points += 10; updateHud();
 
   if (MODE === 'time'){ hits++; updateBadges(); }
@@ -346,10 +367,10 @@ function win(){
   }, 300);
 }
 function fail(){
-  if (MODE !== 'time'){ points -= 5; updateHud(); }
+  if (MODE !== 'time'){ points -= 20; updateHud(); }
   EL.msg && (EL.msg.innerHTML = MODE==='time'
     ? '<span class="bad">Incorrecto</span>'
-    : '<span class="bad">Incorrecto (-5 ⭐️)</span>');
+    : '<span class="bad">Incorrecto (-20 ⭐️)</span>');
   if (navigator.vibrate) navigator.vibrate(15);
   if (MODE !== 'time' && points <= 0){ showGameOver(); return; }
   autoClear();
