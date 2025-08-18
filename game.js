@@ -33,6 +33,34 @@ const IS_MOBILE  = IS_TOUCH && !IS_PRECISE;
 /* ===== persistencia de palabra actual ===== */
 const LS_CURRENT = 'ecuabulario_current_id';
 
+// === Prefill de entrenamiento: primeras 3 palabras con inicial y final ===
+const LS_PREFILL_IDS = 'ecuabulario_prefill_ids';
+
+function getPrefilledIds(){
+  try { return new Set(JSON.parse(localStorage.getItem(LS_PREFILL_IDS) || '[]')); }
+  catch { return new Set(); }
+}
+function addPrefilledId(id){
+  try {
+    const s = getPrefilledIds(); s.add(id);
+    localStorage.setItem(LS_PREFILL_IDS, JSON.stringify([...s]));
+  } catch {}
+}
+function applyTrainingPrefill(){
+  const done = getPrefilledIds();
+  if (!current || done.size >= 3 || done.has(current.id)) return;
+  if (boxes.length >= 2){
+    // primera y última letra de TODA la respuesta (solo letras)
+    boxes[0].val = boxes[0].char.toUpperCase();
+    boxes[0].locked = true;
+    const last = boxes.length - 1;
+    boxes[last].val = boxes[last].char.toUpperCase();
+    boxes[last].locked = true;
+  }
+  addPrefilledId(current.id);
+}
+
+
 /* ===== costos de pistas ===== */
 const COST_HINT_LETTER = 4;
 const COST_HINT_FIRST  = 7;
@@ -63,12 +91,17 @@ const firstEmpty = () => boxes.find(b => !b.locked && !b.val);
 function lastFilled(){ for(let i=boxes.length-1;i>=0;i--) if(boxes[i].val && !boxes[i].locked) return i; return -1; }
 
 function updateHud(){
-  const p = getProgressAll();
+  // Evita reventar si getProgressAll no existe o falla
+  let p = { level: 1, ratio: 0 };
+  try { if (typeof getProgressAll === 'function') p = getProgressAll() || p; } catch {}
+  const ratio = Math.max(0, Math.min(1, Number(p.ratio) || 0));
+
   if (EL.level) EL.level.textContent = `Nivel ${p.level}`;
-  if (EL.bar) EL.bar.style.width = (p.ratio * 100) + '%';
+  if (EL.bar)   EL.bar.style.width = (ratio * 100) + '%';
   if (EL.pointsEl) EL.pointsEl.textContent = points;
   savePoints(points);
 }
+
 
 function highlightNext(){
   boxes.forEach(b => b.el?.classList.remove('focus'));
@@ -161,18 +194,17 @@ function newWord(){
     if (!alreadySolved && found) current = found;
   }
 
-  // 2) Si no hay pendiente, saca la siguiente SIN repetir palabras ya acertadas
+  // 2) Si no hay pendiente, saca la siguiente SIN repetir (usa solved actual)
   if (!current) {
     const solvedNow = getSolvedAll();
 
-    // Limpia la cola por si quedó algo ya resuelto
+    // depura la cola por si quedaron resueltas
     queue = queue.filter(w => !solvedNow.has(w.id));
 
-    // Si la cola quedó vacía, vuelve a llenar SOLO con no resueltas
-    if (queue.length === 0) {
+    if (!queue.length) {
       const fresh = ALL_WORDS.filter(w => !solvedNow.has(w.id));
-      if (fresh.length === 0) {
-        // No quedan palabras nuevas: mostramos fin de banco
+      if (!fresh.length) {
+        // No quedan palabras nuevas
         localStorage.removeItem(LS_CURRENT);
         if (EL.clue) EL.clue.textContent = '¡No hay más palabras por ahora!';
         if (EL.msg)  EL.msg.innerHTML = '<span class="ok">Completaste todas 👏</span>';
@@ -187,15 +219,15 @@ function newWord(){
     current = queue.shift();
   }
 
-  // Guardar como pendiente hasta acertarla (evita cambio si recargas)
+  // Guardar como pendiente (evita cambio si recargas)
   localStorage.setItem(LS_CURRENT, current.id);
 
   // UI
-  if (EL.clue) EL.clue.textContent = current.clue;
+  if (EL.clue) EL.clue.textContent = current.clue || '';
   if (EL.msg)  EL.msg.textContent  = '';
 
-  // Prepara BOXES (solo letras) y TOKEN_LENS (longitud por palabra)
-  const tokens = current.a.split(/[\s-]+/).filter(Boolean);
+  // Construcción de BOXES (solo letras) y TOKEN_LENS por palabra
+  const tokens = String(current.a || '').split(/[\s-]+/).filter(Boolean);
   const isLetter = ch => /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(ch);
 
   TOKEN_LENS = tokens.map(t => [...t].filter(isLetter).length);
@@ -203,33 +235,20 @@ function newWord(){
   boxes = [];
   tokens.forEach(t => {
     for (const ch of t){
-      if (isLetter(ch)) boxes.push({ el:null, char:ch, locked:false, val:'' });
+      if (isLetter(ch)) boxes.push({ el:null, char: ch, locked:false, val:'' });
     }
   });
 
-  answerClean = norm(current.a);
-  fitSlots(); // render inicial
+  // Texto normalizado para el check
+  answerClean = norm(current.a || '');
+
+  // Prefill de entrenamiento (primeras 3 palabras)
+  applyTrainingPrefill();
+
+  // Render inicial y ajuste
+  fitSlots();
 }
-  // UI contrarreloj
-  ensureTimeUI();
-  updateBadges();
 
-  // Prepara BOXES (solo letras) y TOKEN_LENS (longitud por palabra)
-  const tokens = current.a.split(/[\s-]+/).filter(Boolean);
-  const isLetter = ch => /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(ch);
-
-  TOKEN_LENS = tokens.map(t => [...t].filter(isLetter).length);
-
-  boxes = [];
-  tokens.forEach(t => {
-    for (const ch of t){
-      if (isLetter(ch)) boxes.push({ el:null, char:ch, locked:false, val:'' });
-    }
-  });
-
-  answerClean = norm(current.a);
-  fitSlots(); // render inicial
-}
 
 /* ===== Cálculo layout por PALABRAS ===== */
 function layoutByWords(wordLens){
