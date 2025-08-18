@@ -7,27 +7,36 @@
   <title>Ecuabulario – Juego</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
-    /* Overlay Game Over */
+    /* Overlay Game Over (fallback mínimo si tu CSS no lo define) */
     .gameover{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:16px;z-index:1000}
-    .gameover .panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;max-width:460px;text-align:center}
+    .gameover .panel{background:#fff;border-radius:18px;padding:22px;max-width:460px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.18)}
     .gameover .panel h3{margin:0 0 8px}
+    .btn.primary{background:#0f172a;color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer}
   </style>
 </head>
 <body class="bg-yellow">
   <div class="wrap">
+
+    <!-- Topbar con progreso, puntos y reinicio -->
     <header class="topbar">
       <a class="btn" href="index.html" aria-label="Volver al inicio">🏠</a>
+
       <div class="status" aria-live="polite">
-        <div class="progress small"><div id="bar" class="bar"></div></div>
+        <div class="progress small"><div id="bar"></div></div>
       </div>
+
       <div class="hud" aria-label="Puntos">
         <div class="coins">⭐️ <span id="points">0</span></div>
       </div>
+
+      <!-- Botón reiniciar -->
+      <button id="btn-reset" class="btn" aria-label="Reiniciar progreso" title="Reiniciar">🔄</button>
     </header>
 
+    <!-- Tarjeta de juego -->
     <main class="card surface gamecard" id="gamecard">
-
       <h2 id="clue" class="clue">Cargando…</h2>
+
       <div id="slots" class="slots" role="group" aria-label="Casillas de la respuesta"></div>
 
       <div class="hints" id="hints" role="group" aria-label="Ayudas">
@@ -38,7 +47,7 @@
       <div id="msg" class="msg" aria-live="polite"></div>
     </main>
 
-    <!-- Input oculto para teclado nativo -->
+    <!-- Input oculto para teclado de escritorio -->
     <input id="typer" type="text" inputmode="text" autocomplete="off"
            autocapitalize="off" autocorrect="off" enterkeyhint="go"
            spellcheck="false" class="hidden-input" aria-hidden="true" tabindex="-1" />
@@ -54,6 +63,7 @@
     </section>
   </div>
 
- <script type="module" src="game.js?v=21"></script>
+  <!-- Sube el número para romper caché en Pages cuando actualices -->
+  <script type="module" src="game.js?v=23"></script>
 </body>
 </html>
