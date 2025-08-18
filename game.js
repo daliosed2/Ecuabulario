@@ -9,7 +9,7 @@ try { ensureInit(); } catch {}
 const $ = id => document.getElementById(id);
 const EL = {
   pointsEl: $('points'),
-  level: $('level'),
+  level: $('level'),   // opcional si no lo usas en el topbar
   bar: $('bar'),
   clue: $('clue'),
   slots: $('slots'),
@@ -21,9 +21,10 @@ const EL = {
   gameover: $('gameover'),
   goText:   $('go-text'),
   goRetry:  $('go-retry'),
+  resetBtn: $('btn-reset'), // 🔄 nuevo
 };
 
-EL.gamecard?.classList.add('kb-fix');
+if (EL.gamecard) EL.gamecard.classList.add('kb-fix');
 
 /* ===== detección robusta de móvil ===== */
 const IS_TOUCH   = (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window || 'ontouchstart' in document.documentElement;
@@ -50,7 +51,6 @@ function applyTrainingPrefill(){
   const done = getPrefilledIds();
   if (!current || done.size >= 3 || done.has(current.id)) return;
   if (boxes.length >= 2){
-    // primera y última letra de TODA la respuesta (solo letras)
     boxes[0].val = boxes[0].char.toUpperCase();
     boxes[0].locked = true;
     const last = boxes.length - 1;
@@ -59,7 +59,6 @@ function applyTrainingPrefill(){
   }
   addPrefilledId(current.id);
 }
-
 
 /* ===== costos de pistas ===== */
 const COST_HINT_LETTER = 4;
@@ -75,10 +74,10 @@ let timeEnded = false;
 
 /* ===== estado general ===== */
 let points = loadPoints();
+if (typeof points !== 'number' || Number.isNaN(points)) points = 100;
 if (EL.pointsEl) EL.pointsEl.textContent = points;
 
-const solvedSet = getSolvedAll();
-let queue = ALL_WORDS.filter(x => !solvedSet.has(x.id));
+let queue = ALL_WORDS.filter(x => !getSolvedAll().has(x.id));
 if (queue.length === 0) queue = [...ALL_WORDS];
 shuffle(queue);
 
@@ -91,17 +90,24 @@ const firstEmpty = () => boxes.find(b => !b.locked && !b.val);
 function lastFilled(){ for(let i=boxes.length-1;i>=0;i--) if(boxes[i].val && !boxes[i].locked) return i; return -1; }
 
 function updateHud(){
-  // Evita reventar si getProgressAll no existe o falla
+  // Progreso seguro (fallback si getProgressAll falla o devuelve 0)
   let p = { level: 1, ratio: 0 };
   try { if (typeof getProgressAll === 'function') p = getProgressAll() || p; } catch {}
-  const ratio = Math.max(0, Math.min(1, Number(p.ratio) || 0));
 
-  if (EL.level) EL.level.textContent = `Nivel ${p.level}`;
-  if (EL.bar)   EL.bar.style.width = (ratio * 100) + '%';
+  let ratio = Number(p.ratio);
+  if (!Number.isFinite(ratio) || ratio <= 0){
+    try {
+      const solvedNow = getSolvedAll();
+      ratio = (solvedNow.size || 0) / Math.max(1, ALL_WORDS.length);
+    } catch { ratio = 0; }
+  }
+  const widthPct = Math.max(0.02, Math.min(1, ratio)) * 100;
+
+  if (EL.level) EL.level.textContent = `Nivel ${p.level || 1}`;
+  if (EL.bar)   EL.bar.style.width = widthPct + '%';
   if (EL.pointsEl) EL.pointsEl.textContent = points;
   savePoints(points);
 }
-
 
 function highlightNext(){
   boxes.forEach(b => b.el?.classList.remove('focus'));
@@ -197,10 +203,7 @@ function newWord(){
   // 2) Si no hay pendiente, saca la siguiente SIN repetir (usa solved actual)
   if (!current) {
     const solvedNow = getSolvedAll();
-
-    // depura la cola por si quedaron resueltas
     queue = queue.filter(w => !solvedNow.has(w.id));
-
     if (!queue.length) {
       const fresh = ALL_WORDS.filter(w => !solvedNow.has(w.id));
       if (!fresh.length) {
@@ -215,7 +218,6 @@ function newWord(){
       shuffle(fresh);
       queue = fresh;
     }
-
     current = queue.shift();
   }
 
@@ -249,16 +251,17 @@ function newWord(){
   fitSlots();
 }
 
-
 /* ===== Cálculo layout por PALABRAS ===== */
 function layoutByWords(wordLens){
   const isPortrait = window.innerHeight >= window.innerWidth;
   const maxRows = IS_MOBILE ? (isPortrait ? 3 : 2) : 2; // móvil: hasta 3 en vertical; desktop: máx 2
-  const containerW = (EL.slots?.clientWidth ?? 0) || (window.innerWidth - 32);
+
+  // sin optional chaining para compatibilidad
+  const containerW = (EL.slots && EL.slots.clientWidth) ? EL.slots.clientWidth : (window.innerWidth - 32);
+
   const gapL  = cssNum('--gap-letter', BASE.gapL);
   const gapW  = cssNum('--gap-word-col', BASE.gapCol);
 
-  // Tamaños base por plataforma
   const sizeMax = IS_MOBILE ? 54 : 88;
   const sizeMin = IS_MOBILE ? 22 : 24;
 
@@ -270,7 +273,6 @@ function layoutByWords(wordLens){
     return { size, rows: [ [n] ] };
   }
 
-  // Empaquetar palabras en filas para un tamaño dado
   const packRows = (sz)=>{
     const rows = [];
     let row = [];
@@ -306,7 +308,7 @@ function layoutByWords(wordLens){
   return { size, rows };
 }
 
-/* ===== Render segun layout por PALABRAS ===== */
+/* ===== Render según layout por PALABRAS ===== */
 function renderByWords(layout){
   if (!EL.slots) return;
   EL.slots.innerHTML = '';
@@ -327,7 +329,7 @@ function renderByWords(layout){
         s.className = 'slot' + (b.locked ? ' lock' : '');
         s.textContent = b.val || '';
         w.appendChild(s);
-        b.el = s; // re-bind
+        b.el = s;
       }
       row.appendChild(w);
     });
@@ -345,7 +347,6 @@ function fitSlots(){
   const layout = layoutByWords(TOKEN_LENS);
   setSize(layout.size);
 
-  // Ajuste de gaps según tamaño elegido
   const scale = Math.max(0.6, Math.min(1, layout.size / BASE.size));
   setGaps(
     Math.max(6,  Math.floor(BASE.gapL   * scale)),   // letras dentro de palabra
@@ -374,7 +375,7 @@ function backspace(){
   const i = lastFilled(); if (i < 0) return;
   boxes[i].val = '';
   boxes[i].el.textContent = '';
-  EL.msg && (EL.msg.textContent = '');
+  if (EL.msg) EL.msg.textContent = '';
   highlightNext();
 }
 function userGuessClean(){ return norm(boxes.map(b => b.val || '').join('')); }
@@ -382,26 +383,27 @@ function userGuessClean(){ return norm(boxes.map(b => b.val || '').join('')); }
 function showGameOver(){
   const figures = ['Eloy Alfaro','Manuela Sáenz','Rumiñahui','Dolores Cacuango','Oswaldo Guayasamín','Eugenio Espejo','Abdón Calderón','José Joaquín de Olmedo'];
   const name = figures[Math.floor(Math.random()*figures.length)];
-  EL.goText && (EL.goText.textContent = `Has decepcionado a ${name}`);
-  EL.gameover && (EL.gameover.style.display = 'flex');
+  if (EL.goText) EL.goText.textContent = `Has decepcionado a ${name}`;
+  if (EL.gameover) EL.gameover.style.display = 'flex';
 }
 
-EL.goRetry?.addEventListener('pointerup', (e)=>{
-  e.preventDefault();
-  if (MODE === 'time'){
-    timeLeft = 120; hits = 0; timeStarted = false; timeEnded = false;
-    updateBadges();
-    if (EL.gameover) EL.gameover.style.display = 'none';
-    current = null; newWord();
-  } else {
-    points = 100; updateHud();
-    if (EL.gameover) EL.gameover.style.display = 'none';
-    // limpiar casillas pero mantener palabra
-    boxes.forEach(b => { if(!b.locked){ b.val=''; b.el.textContent=''; } });
-    EL.msg && (EL.msg.textContent = '');
-    highlightNext();
-  }
-}, {passive:false});
+if (EL.goRetry){
+  EL.goRetry.addEventListener('pointerup', (e)=>{
+    e.preventDefault();
+    if (MODE === 'time'){
+      timeLeft = 120; hits = 0; timeStarted = false; timeEnded = false;
+      updateBadges();
+      if (EL.gameover) EL.gameover.style.display = 'none';
+      current = null; newWord();
+    } else {
+      points = 100; updateHud();
+      if (EL.gameover) EL.gameover.style.display = 'none';
+      boxes.forEach(b => { if(!b.locked){ b.val=''; b.el.textContent=''; } });
+      if (EL.msg) EL.msg.textContent = '';
+      highlightNext();
+    }
+  }, {passive:false});
+}
 
 function win(){
   // +10 por acierto (clásico)
@@ -409,21 +411,21 @@ function win(){
 
   if (MODE === 'time'){ hits++; updateBadges(); }
 
-  EL.msg && (EL.msg.innerHTML = '<span class="ok">¡Correcto! +10 ⭐️</span>');
-  EL.gamecard.classList.add('winflash');
+  if (EL.msg) EL.msg.innerHTML = '<span class="ok">¡Correcto! +10 ⭐️</span>';
+  EL.gamecard?.classList.add('winflash');
   addSolvedAll(current.id);
   localStorage.removeItem(LS_CURRENT); // ya no está pendiente
   setTimeout(()=>{
-    EL.gamecard.classList.remove('winflash');
-    current = null;      // fuerza elegir nueva
+    EL.gamecard?.classList.remove('winflash');
+    current = null;
     if (!timeEnded) newWord();
   }, 300);
 }
 function fail(){
   if (MODE !== 'time'){ points -= 20; updateHud(); }
-  EL.msg && (EL.msg.innerHTML = MODE==='time'
+  if (EL.msg) EL.msg.innerHTML = MODE==='time'
     ? '<span class="bad">Incorrecto</span>'
-    : '<span class="bad">Incorrecto (-20 ⭐️)</span>');
+    : '<span class="bad">Incorrecto (-20 ⭐️)</span>';
   if (navigator.vibrate) navigator.vibrate(15);
   if (MODE !== 'time' && points <= 0){ showGameOver(); return; }
   autoClear();
@@ -435,7 +437,7 @@ function check(){ (userGuessClean() === answerClean) ? win() : fail(); }
    ======================= */
 function pay(cost){
   if (points < cost){
-    EL.msg && (EL.msg.innerHTML = '<span class="bad">No te alcanzan los puntos.</span>');
+    if (EL.msg) EL.msg.innerHTML = '<span class="bad">No te alcanzan los puntos.</span>';
     return false;
   }
   points -= cost; updateHud(); return true;
@@ -474,15 +476,16 @@ if (!IS_MOBILE) {
   let lastStamp = 0;
 
   function setTyperSentinel(){
+    if (!EL.typer) return;
     EL.typer.value = SENTINEL;
     try { EL.typer.setSelectionRange(EL.typer.value.length, EL.typer.value.length); } catch {}
   }
   function focusTyperSync(){
-    try { EL.typer.focus({ preventScroll:true }); setTyperSentinel(); } catch {}
+    try { EL.typer?.focus({ preventScroll:true }); setTyperSentinel(); } catch {}
   }
-  EL.slots.addEventListener('pointerup', (e)=>{ e.preventDefault(); focusTyperSync(); }, { passive:false });
+  EL.slots?.addEventListener('pointerup', (e)=>{ e.preventDefault(); focusTyperSync(); }, { passive:false });
 
-  EL.typer.addEventListener('input', (e)=>{
+  EL.typer?.addEventListener('input', (e)=>{
     const now = performance.now();
     if (now - lastStamp < 15) { setTyperSentinel(); return; }
     lastStamp = now;
@@ -493,10 +496,10 @@ if (!IS_MOBILE) {
     }
     setTyperSentinel();
   });
-  EL.typer.addEventListener('beforeinput', (e)=>{
+  EL.typer?.addEventListener('beforeinput', (e)=>{
     if (e.inputType === 'deleteContentBackward'){ e.preventDefault(); backspace(); setTyperSentinel(); }
   });
-  EL.typer.addEventListener('keydown', (e)=>{
+  EL.typer?.addEventListener('keydown', (e)=>{
     if(e.key === 'Enter'){ e.preventDefault(); maybeAutoCheck(); }
     if(e.key === 'Backspace'){ e.preventDefault(); backspace(); setTyperSentinel(); }
   });
@@ -528,7 +531,6 @@ function ensureVirtualKeyboard(){
     style.id = 'vk-style';
     style.textContent = `
   :root{ --vk-h: clamp(180px, 38svh, 300px); --vk-gap: clamp(4px, 1.8vw, 8px); }
-  /* Evita escalado y zoom por doble tap */
   html, body{ -webkit-text-size-adjust: 100%; }
   .vk{
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 999;
@@ -568,9 +570,9 @@ function ensureVirtualKeyboard(){
   }
 
   const rows = [
-    ['Q','W','E','R','T','Y','U','I','O','P'],   // 10
-    ['A','S','D','F','G','H','J','K','L','Ñ'],   // 10
-    ['Z','X','C','V','B','N','M','⌫','OK']      // 9 (compacta)
+    ['Q','W','E','R','T','Y','U','I','O','P'],
+    ['A','S','D','F','G','H','J','K','L','Ñ'],
+    ['Z','X','C','V','B','N','M','⌫','OK']
   ];
 
   // Anti-zoom por doble tap y gestos en iOS
@@ -625,13 +627,41 @@ function handleVK(k){
            Util
    ======================= */
 function autoClear(){
-  EL.gamecard.classList.add('shake');
+  EL.gamecard?.classList.add('shake');
   requestAnimationFrame(()=>setTimeout(()=>{
-    EL.gamecard.classList.remove('shake');
+    EL.gamecard?.classList.remove('shake');
     boxes.forEach(b => { if(!b.locked){ b.val=''; b.el.textContent=''; } });
-    EL.msg && (EL.msg.textContent = '');
+    if (EL.msg) EL.msg.textContent = '';
     highlightNext();
   }, 220));
+}
+
+/* ===== Reinicio total ===== */
+function resetGame(){
+  const ok = confirm('¿Quieres empezar de cero? Se borrarán tus puntos y las palabras resueltas.');
+  if (!ok) return;
+
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      if (k) keys.push(k);
+    }
+    keys.forEach(k=>{
+      if (/^ecuabulario_/i.test(k)) localStorage.removeItem(k);
+    });
+  } catch {}
+
+  points = 100; savePoints(points);
+  timeStarted = false; timeEnded = false; hits = 0; timeLeft = 120;
+  if (timerId){ clearInterval(timerId); timerId = null; }
+  updateHud();
+
+  queue = [...ALL_WORDS]; shuffle(queue);
+  current = null; boxes = []; TOKEN_LENS = [];
+
+  if (EL.gameover) EL.gameover.style.display = 'none';
+  newWord();
 }
 
 /* =======================
@@ -642,3 +672,8 @@ newWord();
 
 window.addEventListener('resize', debounce(fitSlots, 120));
 window.addEventListener('orientationchange', debounce(fitSlots, 120));
+
+EL.resetBtn?.addEventListener('pointerup', (e)=>{
+  e.preventDefault();
+  resetGame();
+}, {passive:false});
