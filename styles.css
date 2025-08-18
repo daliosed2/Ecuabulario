@@ -106,13 +106,24 @@ body {
   margin: 16px 0 18px;
 }
 
+/* Cada fila contiene varias .word, centradas */
 .row{
-  display: grid;
-  gap: var(--gap-letter);
+  display: flex;
+  flex-wrap: nowrap;         /* no saltar dentro de la fila */
   justify-content: center;
   width: 100%;
   max-width: 100%;
 }
+
+/* Una palabra = N casillas en fila (no se parte) */
+.word{
+  display: grid;
+  grid-auto-flow: column;
+  gap: var(--gap-letter);     /* espacio entre letras de una palabra */
+}
+
+/* Separación entre palabras de la MISMA fila */
+.word + .word{ margin-left: var(--gap-word-col); }
 
 /* Recuadro individual */
 .slot{
@@ -264,3 +275,23 @@ body {
    =========================== */
 .hidden{ display:none !important; }
 .center{ text-align:center; }
+
+:root{ --gap-word-col: 18px; } /* espacio entre palabras */
+
+@media (max-width: 480px){
+  :root{
+    --slot-size: 48px;        /* casillas más pequeñas en móvil */
+    --gap-letter: 8px;
+    --gap-word-row: 12px;
+    --gap-word-col: 16px;
+  }
+}
+@media (max-width: 360px){
+  :root{
+    --slot-size: 42px;
+    --gap-letter: 6px;
+    --gap-word-row: 10px;
+    --gap-word-col: 14px;
+  }
+}
+
