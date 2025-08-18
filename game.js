@@ -342,7 +342,7 @@ EL.goRetry?.addEventListener('pointerup', (e)=>{
     current = null; newWord();
   } else {
     points = 100; updateHud();
-    if (EL.gameover) EL.gameover.style.display = 'none');
+    if (EL.gameover) EL.gameover.style.display = 'none';
     // limpiar casillas pero mantener palabra
     boxes.forEach(b => { if(!b.locked){ b.val=''; b.el.textContent=''; } });
     EL.msg && (EL.msg.textContent = '');
