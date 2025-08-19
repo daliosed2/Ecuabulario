@@ -9,7 +9,7 @@ try { ensureInit(); } catch {}
 const $ = id => document.getElementById(id);
 const EL = {
   pointsEl: $('points'),
-  level: $('level'),   // opcional si no lo usas en el topbar
+  level: $('level'),   // opcional si lo usas en tu CSS general
   bar: $('bar'),
   clue: $('clue'),
   slots: $('slots'),
@@ -21,7 +21,11 @@ const EL = {
   gameover: $('gameover'),
   goText:   $('go-text'),
   goRetry:  $('go-retry'),
-  resetBtn: $('btn-reset'), // 🔄 nuevo
+  resetBtn: $('btn-reset'),
+  // HUD nuevos
+  solvedBadge: $('solvedBadge'),
+  timerBadge:  $('timerBadge'),
+  hitsBadge:   $('hitsBadge'),
 };
 
 if (EL.gamecard) EL.gamecard.classList.add('kb-fix');
@@ -89,6 +93,16 @@ function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.rand
 const firstEmpty = () => boxes.find(b => !b.locked && !b.val);
 function lastFilled(){ for(let i=boxes.length-1;i>=0;i--) if(boxes[i].val && !boxes[i].locked) return i; return -1; }
 
+/* ===== HUD ===== */
+function updateSolvedBadge(){
+  if (!EL.solvedBadge) return;
+  let solved = 0, total = ALL_WORDS.length;
+  try { solved = getSolvedAll().size; } catch {}
+  const remain = Math.max(0, total - solved);
+  EL.solvedBadge.textContent = `${solved}/${total}`;
+  EL.solvedBadge.title = `Adivinadas: ${solved} · Faltan: ${remain}`;
+}
+
 function updateHud(){
   // Progreso seguro (fallback si getProgressAll falla o devuelve 0)
   let p = { level: 1, ratio: 0 };
@@ -106,63 +120,25 @@ function updateHud(){
   if (EL.level) EL.level.textContent = `Nivel ${p.level || 1}`;
   if (EL.bar)   EL.bar.style.width = widthPct + '%';
   if (EL.pointsEl) EL.pointsEl.textContent = points;
+
+  if (MODE === 'classic') updateSolvedBadge();
   savePoints(points);
 }
 
-function highlightNext(){
-  boxes.forEach(b => b.el?.classList.remove('focus'));
-  const b = firstEmpty();
-  if (b && b.el){
-    b.el.classList.add('focus');
-    try { b.el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' }); } catch {}
+// Muestra/oculta badges del topbar según modo
+function ensureModeHUD(){
+  if (MODE === 'time'){
+    if (EL.solvedBadge) EL.solvedBadge.style.display = 'none';
+    if (EL.timerBadge)  EL.timerBadge.style.display  = '';
+    if (EL.hitsBadge)   EL.hitsBadge.style.display   = '';
+    updateBadges();
+  } else {
+    if (EL.solvedBadge) EL.solvedBadge.style.display = '';
+    if (EL.timerBadge)  EL.timerBadge.style.display  = 'none';
+    if (EL.hitsBadge)   EL.hitsBadge.style.display   = 'none';
   }
 }
 
-/* =======================
-   Auto-ajuste / variables CSS
-   ======================= */
-const root = document.documentElement;
-const cssNum = (name, fallback)=> {
-  const v = getComputedStyle(root).getPropertyValue(name).trim();
-  const n = parseFloat(v);
-  return Number.isFinite(n) ? n : fallback;
-};
-const BASE = {
-  size:  cssNum('--slot-size', 62),
-  gapL:  cssNum('--gap-letter', 12),
-  gapRow:cssNum('--gap-word-row', 14),
-  gapCol:cssNum('--gap-word-col', 18),
-};
-const setSize = (px)=> root.style.setProperty('--slot-size', px+'px');
-const setGaps = (l,r,c)=>{
-  root.style.setProperty('--gap-letter', l+'px');
-  root.style.setProperty('--gap-word-row', r+'px');
-  root.style.setProperty('--gap-word-col', c+'px');
-};
-const debounce = (fn, wait=120)=>{
-  let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); };
-};
-
-/* =======================
-   UI contrarreloj
-   ======================= */
-function ensureTimeUI(){
-  if (MODE !== 'time') return;
-  if (!document.getElementById('modebar')){
-    const mb = document.createElement('div');
-    mb.id = 'modebar';
-    mb.className = 'modebar';
-    mb.innerHTML = `
-      <span id="timerBadge" class="badge">2:00</span>
-      <span id="hitsBadge"  class="badge">Aciertos 0</span>
-    `;
-    const wrap = document.querySelector('.wrap') || document.body;
-    wrap.insertBefore(mb, wrap.firstChild.nextSibling || wrap.firstChild);
-  }
-  EL.timerBadge = document.getElementById('timerBadge');
-  EL.hitsBadge  = document.getElementById('hitsBadge');
-  updateBadges();
-}
 function fmtTime(s){ const m = Math.floor(s/60); const ss = String(s%60).padStart(2,'0'); return `${m}:${ss}`; }
 function updateBadges(){
   if (MODE !== 'time') return;
@@ -225,6 +201,8 @@ function newWord(){
   localStorage.setItem(LS_CURRENT, current.id);
 
   // UI
+  ensureModeHUD();
+  updateHud();
   if (EL.clue) EL.clue.textContent = current.clue || '';
   if (EL.msg)  EL.msg.textContent  = '';
 
@@ -252,13 +230,32 @@ function newWord(){
 }
 
 /* ===== Cálculo layout por PALABRAS ===== */
+const root = document.documentElement;
+const cssNum = (name, fallback)=> {
+  const v = getComputedStyle(root).getPropertyValue(name).trim();
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+const BASE = {
+  size:  cssNum('--slot-size', 62),
+  gapL:  cssNum('--gap-letter', 12),
+  gapRow:cssNum('--gap-word-row', 14),
+  gapCol:cssNum('--gap-word-col', 18),
+};
+const setSize = (px)=> root.style.setProperty('--slot-size', px+'px');
+const setGaps = (l,r,c)=>{
+  root.style.setProperty('--gap-letter', l+'px');
+  root.style.setProperty('--gap-word-row', r+'px');
+  root.style.setProperty('--gap-word-col', c+'px');
+};
+const debounce = (fn, wait=120)=>{
+  let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); };
+};
+
 function layoutByWords(wordLens){
   const isPortrait = window.innerHeight >= window.innerWidth;
   const maxRows = IS_MOBILE ? (isPortrait ? 3 : 2) : 2; // móvil: hasta 3 en vertical; desktop: máx 2
-
-  // sin optional chaining para compatibilidad
   const containerW = (EL.slots && EL.slots.clientWidth) ? EL.slots.clientWidth : (window.innerWidth - 32);
-
   const gapL  = cssNum('--gap-letter', BASE.gapL);
   const gapW  = cssNum('--gap-word-col', BASE.gapCol);
 
@@ -408,12 +405,12 @@ if (EL.goRetry){
 function win(){
   // +10 por acierto (clásico)
   points += 10; updateHud();
-
   if (MODE === 'time'){ hits++; updateBadges(); }
 
   if (EL.msg) EL.msg.innerHTML = '<span class="ok">¡Correcto! +10 ⭐️</span>';
   EL.gamecard?.classList.add('winflash');
   addSolvedAll(current.id);
+  updateSolvedBadge(); // actualiza  acertadas/faltan
   localStorage.removeItem(LS_CURRENT); // ya no está pendiente
   setTimeout(()=>{
     EL.gamecard?.classList.remove('winflash');
@@ -667,13 +664,10 @@ function resetGame(){
 /* =======================
            Init
    ======================= */
+ensureModeHUD();
 updateHud();
 newWord();
 
 window.addEventListener('resize', debounce(fitSlots, 120));
 window.addEventListener('orientationchange', debounce(fitSlots, 120));
-
-EL.resetBtn?.addEventListener('pointerup', (e)=>{
-  e.preventDefault();
-  resetGame();
-}, {passive:false});
+EL.resetBtn?.addEventListener('pointerup', (e)=>{ e.preventDefault(); resetGame(); }, {passive:false});
