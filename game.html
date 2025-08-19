@@ -17,12 +17,21 @@
 <body class="bg-yellow">
   <div class="wrap">
 
-    <!-- Topbar con progreso, puntos y reinicio -->
+    <!-- Topbar con progreso, meta (tradicional/contrarreloj), puntos y reinicio -->
     <header class="topbar">
       <a class="btn" href="index.html" aria-label="Volver al inicio">🏠</a>
 
       <div class="status" aria-live="polite">
         <div class="progress small"><div id="bar"></div></div>
+      </div>
+
+      <!-- Meta HUD: cambia según el modo -->
+      <div class="meta">
+        <!-- Tradicional -->
+        <span id="solvedBadge" class="badge" title="Adivinadas / Total">0/0</span>
+        <!-- Contrarreloj -->
+        <span id="timerBadge" class="badge" style="display:none">2:00</span>
+        <span id="hitsBadge"  class="badge" style="display:none">Aciertos 0</span>
       </div>
 
       <div class="hud" aria-label="Puntos">
@@ -64,6 +73,6 @@
   </div>
 
   <!-- Sube el número para romper caché en Pages cuando actualices -->
-  <script type="module" src="game.js?v=23"></script>
+  <script type="module" src="game.js?v=24"></script>
 </body>
 </html>
